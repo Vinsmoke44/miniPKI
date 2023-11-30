@@ -50,6 +50,8 @@ def desegment(block):
 # dcrypt=bits_to_text(bites)
 # print(dcrypt)
 
-
+# test=input("Entrez binaire\n")
+# dcode=bits_to_text(test)
+# print(dcode)
 
 
