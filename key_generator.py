@@ -28,7 +28,7 @@ def inverse_modulaire(a, m):
         x0, x1 = x1 - q * x0, x0
     return x1 + m0 if x1 < 0 else x1
 
-def generer_cles(bits):
+def generate_asymetrical(bits):
     p = generer_nombre_premier(bits)
     q = generer_nombre_premier(bits)
     n = p * q
@@ -48,7 +48,48 @@ def generer_cles(bits):
 
     return cle_publique, cle_privee
 
-cle_publique, cle_privee = generer_cles(512) 
+def generate_serpent_key():
+    # La longueur de la clé en bits
+    key_length_bits = 128   
+    serpent_key_bits = [random.choice([0, 1]) for _ in range(key_length_bits)]
+    serpent_key = "".join(map(str, serpent_key_bits))
+    return serpent_key
 
-print("Clé publique (n, e) :", cle_publique)
-print("Clé privée (n, d) :", cle_privee)
+
+def encrypt_rsa(plaintext, public_key):
+    n, e = public_key
+    # Chiffrement RSA
+    ciphertext = pow(plaintext, e, n)
+    return ciphertext
+
+def decrypt_rsa(ciphertext, private_key):
+    n, d = private_key
+    # Déchiffrement RSA
+    plaintext = pow(ciphertext, d, n)
+    return plaintext
+
+# Test generer asymetrique et symetrique
+# cle_publique, cle_privee = generate_asymetrical(512)
+# cle_symetrique = generate_serpent_key()
+
+# Test chiffrer clé symetrique avec clé publique 
+# print(cle_symetrique)
+# cle_symetrique_int = int("".join(map(str, cle_symetrique)), 2)
+# cle_symetrique_chiffree = encrypt_rsa(cle_symetrique_int, cle_publique)
+# print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
+ 
+# Test dechiffrer clé symetrique avec clés privée
+#cle_symetrique_dechiffree = decrypt_rsa(cle_symetrique_chiffree, cle_privee)
+# cle_symetrique_dechiffree_bits = [int(b) for b in bin(cle_symetrique_dechiffree)[2:].zfill(128)]
+# serpent_key_decrypt = "".join(map(str, cle_symetrique_dechiffree_bits))
+# print("Clé symétrique déchiffrée en bits :", serpent_key_decrypt)
+
+
+#Test clé asymetrique
+# cle_publique, cle_privee = generate_asymetrical(512) 
+# print("Clé publique (n, e) :", cle_publique)
+# print("Clé privée (n, d) :", cle_privee)
+
+# Test clé symetrique :
+# serpent_key_bits = generate_serpent_key()
+# print("Clé Serpent générée en bits:", serpent_key_bits)
