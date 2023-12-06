@@ -41,12 +41,12 @@ def generate_asymetrical(bits):
     d = inverse_modulaire(e, phi_n)
 
     # Clé publique
-    cle_publique = (n, e)
+    # cle_publique = (n, e)
 
-    # Clé privée
-    cle_privee = (n, d)
+    # # Clé privée
+    # cle_privee = (n, d)
 
-    return cle_publique, cle_privee
+    return n, e , d
 
 def generate_serpent_key():
     # La longueur de la clé en bits
