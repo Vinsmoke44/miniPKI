@@ -30,9 +30,8 @@ def afficher_serpent():
           \      ~-____-~    _-~    ~-_    ~-_-~    /
             ~-_           _-~          ~-_       _-~
                ~--______-~                ~-___-~
-    
-Crédit ASCII art : https://www.asciiart.eu/animals/reptiles/snakes
-    """
+
+                       """
     print(serpent)
 
 def menu():
@@ -93,13 +92,14 @@ def verify_keys_exist(user):
 def main():
     verify_tree()
     utilisateur = verify_user()
-    print(f"User: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
     afficher_serpent()
     menu()
     while True:  
         print(f"\nUser: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
         if verify_tree():
             print(f"Architecture:[{Fore.GREEN}V{Style.RESET_ALL}]")
+        else: 
+            verify_tree()
         if verify_keys_exist(utilisateur):
             print(f"Clés asymetriques: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else:
@@ -194,12 +194,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# message=input("Entrez message\n")
-# dcode=message2bits(message)
-# print(dcode)
-# time.sleep(2)
-# mess=bits2message(dcode)
-# print(mess)
 
 
