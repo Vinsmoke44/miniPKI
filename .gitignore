@@ -1,6 +1,6 @@
 **/logs
 __pycache__/
-/Alice
-/Bob
-/Tier
+/alice
+/bob
+/tier
 clean.sh

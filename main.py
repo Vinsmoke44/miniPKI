@@ -47,6 +47,7 @@ def menu():
     print("->8<- Creer un block chain")
     print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
     print("->10<- Re afficher le menu")
+    print("->11<- Changer d'utilisateur")
     print("->0<- Quitter")
     
 def choix(): 
@@ -61,6 +62,12 @@ def verify_tree():
         if reponse =='o':
             for directory in directories_no:
                 os.makedirs(directory)
+            message = os.path.join("alice", "messages")   
+            with open(message, 'w'):
+                pass
+            message = os.path.join("bob", "messages")   
+            with open(message, 'w'):
+                pass
         else:
             sys.exit()
         print("Architecture PKI créée")
@@ -68,7 +75,7 @@ def verify_tree():
 
 def verify_user():
     while True:
-        reponse = input("Quel utilisateur êtes-vous ? Alice ou Bob ? ").lower()
+        reponse = input("Quel utilisateur êtes-vous ? Alice ou Bob ? \n>> ").lower()
         if reponse in ['alice', 'bob']:
             return reponse
         else:
@@ -111,8 +118,6 @@ def main():
                 private_key_file = os.path.join(user_directory, 'id_serp')
                 with open(private_key_file, 'w') as f:
                     f.write('\n'.join([str(n), str(d)]))
-
-    
                 # Créer le fichier pour la clé publique
                 public_key_file = os.path.join(user_directory, 'id_serp.pub')
                 with open(public_key_file, 'w') as f:
@@ -128,7 +133,41 @@ def main():
                 #case si on a pas de documents
                 print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
             case '6':
-                print("Quel message souhaitez-vous envoyer ?")
+                if verify_keys_exist("bob") and verify_keys_exist("alice"):
+                    print("Generation de la clé secrete")
+                    sym_key = generate_serpent_key()
+                    message = os.path.join(utilisateur, "sym_key") 
+                    with open(message, 'w') as f:
+                        f.write(sym_key)
+                    print(sym_key)
+                    print("Chiffrement de la clé secrete avec la clés public")
+                    sym_key_int = int("".join(map(str, sym_key)), 2)
+                    if utilisateur == "bob":
+                        asym_path = os.path.join("alice", "id_serp.pub") 
+                    elif utilisateur == "alice":
+                        asym_path = os.path.join("bob", "id_serp.pub") 
+                    else: 
+                        print("Utilisateur invalide")
+                    with open(asym_path, 'r') as fichier:
+                        lignes = fichier.readlines()
+                        if len(lignes) == 2:
+                            n = int(lignes[0].strip())  
+                            e = int(lignes[1].strip()) 
+                        else: 
+                            print("Le fichier n'est pas valide/créé")
+                    cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
+                    print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
+                    print("Envoie de la clé secrete chiffré")
+                    if utilisateur == "bob":
+                        crypt_key = os.path.join("alice", "messages") 
+                    elif utilisateur == "alice":
+                        crypt_key = os.path.join("bob", "messages") 
+                    with open(crypt_key, 'a') as f:
+                        sym_key = "sym," + str(cle_symetrique_chiffree) + "\n"
+                        f.write(sym_key)
+                    print("Quel message souhaitez-vous envoyer ?")  
+                else:
+                    print(f"Les 2 utilisateurs n'ont pas crées de clés asymetriques")                  
             case '7':
                 print("Demande de preuve de connaissance")
             case '8':
@@ -142,13 +181,16 @@ def main():
                 #verification et signature certificat
             case '10': 
                 menu()
+            case '11': 
+                utilisateur = verify_user()
+                print(f"User: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
                 print("Au revoir !")
                 sys.exit()  # Quitte le programme si l'utilisateur choisit 0
             case _:
                 print("Choix non valide. Veuillez entrer un numéro valide.")
         
-        input("\nAppuyez sur Enter pour continuer...\n")
+        input("\n\nAppuyez sur Enter pour continuer...\n\n")
 
 if __name__ == "__main__":
     main()

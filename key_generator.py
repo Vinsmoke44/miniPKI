@@ -56,15 +56,11 @@ def generate_serpent_key():
     return serpent_key
 
 
-def encrypt_rsa(plaintext, public_key):
-    n, e = public_key
-    # Chiffrement RSA
+def encrypt_rsa(plaintext, n, e):
     ciphertext = pow(plaintext, e, n)
     return ciphertext
 
-def decrypt_rsa(ciphertext, private_key):
-    n, d = private_key
-    # Déchiffrement RSA
+def decrypt_rsa(ciphertext, n , d):
     plaintext = pow(ciphertext, d, n)
     return plaintext
 
