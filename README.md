@@ -27,7 +27,7 @@ The project let you choose between different modes :
 To run the project, clone it and run : 
 
 ```
- python3 front.py
+ python3 main.py
 ```
 
 Since everything is made from scratch, no librairy is necessary.
