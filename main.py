@@ -89,6 +89,19 @@ def verify_keys_exist(user):
     else:
         return False
 
+def search_user_in_pubkeyfile(user_search):
+    filepath="tier/pub_keys_file"
+    with open(filepath, 'r') as file:
+        lignes = file.readlines()
+        # Parcourez les lignes à l'envers
+        for ligne in reversed(lignes):
+            # Divisez la ligne en champs en utilisant le point-virgule comme délimiteur
+            champs = ligne.strip().split(';')
+            if champs[0].lower() == user_search.lower():
+                # Si c'est le cas, imprimez la ligne ou effectuez d'autres actions nécessaires
+                return ligne
+        return False
+
 def main():
     verify_tree()
     utilisateur = verify_user()
@@ -123,6 +136,10 @@ def main():
                 with open(public_key_file, 'w') as f:
                     f.write('\n'.join([str(n), str(e)]))
                 print(f"Clés générées et enregistrées pour {utilisateur}.")
+                # Envoyer la clé publique au tier de confiance 
+                print("Envoie de la clé publique au tier de confiance")
+                with open("tier/pub_keys_file", 'a') as f:
+                    f.write(';'.join([utilisateur,str(n), str(e)])+"\n")
             case '3':
                 #case si on en a pas, case si on en a 
                 print("Vous avez besoin d'un certificat...")
@@ -133,39 +150,35 @@ def main():
                 #case si on a pas de documents
                 print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
             case '6':
-                if verify_keys_exist("bob") and verify_keys_exist("alice"):
+                if utilisateur == "bob":
+                    user_search="alice"
+                elif utilisateur == "alice":
+                    user_search="bob" 
+                if verify_keys_exist(utilisateur) and search_user_in_pubkeyfile(user_search):
                     print("Generation de la clé secrete")
                     sym_key = generate_serpent_key()
                     message = os.path.join(utilisateur, "sym_key") 
                     with open(message, 'w') as f:
                         f.write(sym_key)
-                    print(sym_key)
+                    # print(sym_key)
                     print("Chiffrement de la clé secrete avec la clés public")
                     sym_key_int = int("".join(map(str, sym_key)), 2)
-                    if utilisateur == "bob":
-                        asym_path = os.path.join("alice", "id_serp.pub") 
-                    elif utilisateur == "alice":
-                        asym_path = os.path.join("bob", "id_serp.pub") 
-                    else: 
-                        print("Utilisateur invalide")
-                    with open(asym_path, 'r') as fichier:
-                        lignes = fichier.readlines()
-                        if len(lignes) == 2:
-                            n = int(lignes[0].strip())  
-                            e = int(lignes[1].strip()) 
-                        else: 
-                            print("Le fichier n'est pas valide/créé")
+                    lignes= search_user_in_pubkeyfile(user_search)
+                    # print(lignes)
+                    n=int(lignes.strip().split(';')[1])
+                    e=int(lignes.strip().split(';')[2])
+                    # print("Clé publique: " + str(n) + ";" + str(e))
                     cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
-                    print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
-                    print("Envoie de la clé secrete chiffré")
+                    # print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
+                    plain_text=input("Quel message souhaitez-vous envoyer ?\n") 
                     if utilisateur == "bob":
                         crypt_key = os.path.join("alice", "messages") 
                     elif utilisateur == "alice":
                         crypt_key = os.path.join("bob", "messages") 
                     with open(crypt_key, 'a') as f:
-                        sym_key = "sym," + str(cle_symetrique_chiffree) + "\n"
+                        sym_key = str(cle_symetrique_chiffree) + "," + plain_text +  "\n"
                         f.write(sym_key)
-                    print("Quel message souhaitez-vous envoyer ?")  
+                    print("Envoie de la clé secrete et du message chifré")
                 else:
                     print(f"Les 2 utilisateurs n'ont pas crées de clés asymetriques")                  
             case '7':
