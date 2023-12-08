@@ -9,6 +9,7 @@ from send import *
 from receive import *
 import sys
 import os
+import re
 from colorama import Fore, Style
 
 def afficher_serpent():
@@ -67,8 +68,11 @@ def verify_tree():
             message = os.path.join("bob", "messages")   
             with open(message, 'w'):
                 pass
+            message = os.path.join("tier", "certificates")  
+            with open(message, 'w'):
+                pass
         else:
-            sys.exit()
+            exit()
         print("Architecture PKI créée")
     return True
 
@@ -101,12 +105,29 @@ def search_user_in_pubkeyfile(user_search):
                 # Si c'est le cas, imprimez la ligne ou effectuez d'autres actions nécessaires
                 return ligne
         return False
+    
+def is_valid_email(email):
+    email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return re.match(email_pattern, email) is not None
 
+# Fonction pour valider la date de naissance
+def is_valid_birthdate(birthdate):
+    birthdate_pattern = r'^\d{1,2}/\d{1,2}/\d{4}$'
+    return re.match(birthdate_pattern, birthdate) is not None
+
+def check_certificate(username):
+    with open("tier/certificates", 'r') as file:
+        for line in file:
+            fields = line.strip().split(',')
+            if fields and fields[0] == username:
+                return True
+        return False
 def main():
     verify_tree()
     utilisateur = verify_user()
     afficher_serpent()
     menu()
+    check_certificate(utilisateur)
     while True:  
         print(f"\nUser: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
         if verify_tree():
@@ -117,6 +138,10 @@ def main():
             print(f"Clés asymetriques: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else:
             print(f"Clés asymetriques: [{Fore.RED}X{Style.RESET_ALL}]")
+        if check_certificate(utilisateur):
+            print(f"Certificat généré: [{Fore.GREEN}V{Style.RESET_ALL}]")
+        else: 
+            print(f"Certificat généré: [{Fore.RED}X{Style.RESET_ALL}]")
         choice_user = choix()
         match choice_user:
             case '1':
@@ -141,11 +166,38 @@ def main():
                 with open("tier/pub_keys_file", 'a') as f:
                     f.write(';'.join([utilisateur,str(n), str(e)])+"\n")
             case '3':
-                #case si on en a pas, case si on en a 
-                print("Vous avez besoin d'un certificat...")
+                if verify_keys_exist(utilisateur):
+                    creatorverif = input("Voulez vous generer (1) ou signer (2) un certificat ? \n")
+                    match creatorverif:
+                        case '1':
+                            while True: 
+                                mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
+                                if is_valid_email(mail):
+                                    born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
+                                    if is_valid_birthdate(born):
+                                        lignes= search_user_in_pubkeyfile(utilisateur)
+                                        n=(lignes.strip().split(';')[1])
+                                        e=(lignes.strip().split(';')[2])
+                                        with open("tier/certificates", 'a') as f:
+                                            f.write(utilisateur + "," + mail + "," + born + "," + n + "," + e)
+                                            print("Generation du certificat")
+                                            break
+                                    elif born =="0":
+                                        break
+                                    else: 
+                                        print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
+                                elif mail =="0":
+                                    break
+                                else:
+                                    print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
+                        case '2':
+                            pass
+                        case _: 
+                            print("Mauvais choix, veuillez choisir entre 1 et 2")
+                else: 
+                    print("Il vous faut un couple de clé asymetrique afin de génerer/signer un certificat")
             case '4':
-                # case pour si on a pas de certificat
-                print("Vérification du certificat...")
+                print("Verification de certificat")
             case '5':
                 #case si on a pas de documents
                 print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
@@ -154,7 +206,7 @@ def main():
                     user_search="alice"
                 elif utilisateur == "alice":
                     user_search="bob" 
-                if verify_keys_exist(utilisateur) and search_user_in_pubkeyfile(user_search):
+                if search_user_in_pubkeyfile(user_search):
                     print("Generation de la clé secrete")
                     sym_key = generate_serpent_key()
                     message = os.path.join(utilisateur, "sym_key") 
@@ -199,7 +251,7 @@ def main():
                 print(f"User: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
                 print("Au revoir !")
-                sys.exit()  # Quitte le programme si l'utilisateur choisit 0
+                exit()  # Quitte le programme si l'utilisateur choisit 0
             case _:
                 print("Choix non valide. Veuillez entrer un numéro valide.")
         
