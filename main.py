@@ -71,6 +71,13 @@ def verify_tree():
             message = os.path.join("tier", "certificates")  
             with open(message, 'w'):
                 pass
+            n, e, d = generate_asymetrical(512)
+            message = os.path.join("tier", "id_serp")  
+            with open(message, 'w') as f:
+                f.write('\n'.join([str(n), str(d)]))
+            message = os.path.join("tier", "id_rsa.pub")  
+            with open(message, 'w') as f:
+                f.write('\n'.join([str(n), str(e)]))
         else:
             exit()
         print("Architecture PKI créée")
@@ -167,33 +174,36 @@ def main():
                     f.write(';'.join([utilisateur,str(n), str(e)])+"\n")
             case '3':
                 if verify_keys_exist(utilisateur):
-                    creatorverif = input("Voulez vous generer (1) ou signer (2) un certificat ? \n")
-                    match creatorverif:
-                        case '1':
-                            while True: 
-                                mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
-                                if is_valid_email(mail):
-                                    born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
-                                    if is_valid_birthdate(born):
-                                        lignes= search_user_in_pubkeyfile(utilisateur)
-                                        n=(lignes.strip().split(';')[1])
-                                        e=(lignes.strip().split(';')[2])
-                                        with open("tier/certificates", 'a') as f:
-                                            f.write(utilisateur + "," + mail + "," + born + "," + n + "," + e)
-                                            print("Generation du certificat")
+                    if os.path.exists("tier/id_serp"): 
+                        creatorverif = input("Voulez vous generer (1) ou signer (2) un certificat ? \n")
+                        match creatorverif:
+                            case '1':
+                                while True: 
+                                    mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
+                                    if is_valid_email(mail):
+                                        born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
+                                        if is_valid_birthdate(born):
+                                            lignes= search_user_in_pubkeyfile(utilisateur)
+                                            n=(lignes.strip().split(';')[1])
+                                            e=(lignes.strip().split(';')[2])
+                                            with open("tier/certificates", 'a') as f:
+                                                f.write(utilisateur + "," + mail + "," + born + "," + n + "," + e)
+                                                print("Generation du certificat")
+                                                break
+                                        elif born =="0":
                                             break
-                                    elif born =="0":
+                                        else: 
+                                            print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
+                                    elif mail =="0":
                                         break
-                                    else: 
-                                        print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
-                                elif mail =="0":
-                                    break
-                                else:
-                                    print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
-                        case '2':
-                            pass
-                        case _: 
-                            print("Mauvais choix, veuillez choisir entre 1 et 2")
+                                    else:
+                                        print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
+                            case '2':
+                                pass
+                            case _: 
+                                print("Mauvais choix, veuillez choisir entre 1 et 2")
+                    else: 
+                        print("Le tier de confiance n'a pas de clé privé pour signer")
                 else: 
                     print("Il vous faut un couple de clé asymetrique afin de génerer/signer un certificat")
             case '4':

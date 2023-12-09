@@ -51,7 +51,8 @@ def generate_asymetrical(bits):
 def generate_serpent_key():
     # La longueur de la clé en bits
     key_length_bits = 256
-    serpent_key_bits = [random.choice([0, 1]) for _ in range(key_length_bits)]
+    serpent_key_bits = [1]  # Premier élément est 1, evite l'ecrasement des 0 quand on convertit en int
+    serpent_key_bits.extend(random.choice([0, 1]) for _ in range(key_length_bits - 1))
     serpent_key = "".join(map(str, serpent_key_bits))
     return serpent_key
 
@@ -65,17 +66,19 @@ def decrypt_rsa(ciphertext, n , d):
     return plaintext
 
 # Test generer asymetrique et symetrique
-# cle_publique, cle_privee = generate_asymetrical(512)
+# n,e,d = generate_asymetrical(512)
+# cle_publique = (n, e)
+# cle_privee = (n, d)
 # cle_symetrique = generate_serpent_key()
 
-# Test chiffrer clé symetrique avec clé publique 
+# Test chiffrer clé symetrique avec clé privé
 # print(cle_symetrique)
 # cle_symetrique_int = int("".join(map(str, cle_symetrique)), 2)
-# cle_symetrique_chiffree = encrypt_rsa(cle_symetrique_int, cle_publique)
+# cle_symetrique_chiffree = encrypt_rsa(cle_symetrique_int, n,d)
 # print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
  
 # Test dechiffrer clé symetrique avec clés privée
-#cle_symetrique_dechiffree = decrypt_rsa(cle_symetrique_chiffree, cle_privee)
+# cle_symetrique_dechiffree = decrypt_rsa(cle_symetrique_chiffree, n,e)
 # cle_symetrique_dechiffree_bits = [int(b) for b in bin(cle_symetrique_dechiffree)[2:].zfill(128)]
 # serpent_key_decrypt = "".join(map(str, cle_symetrique_dechiffree_bits))
 # print("Clé symétrique déchiffrée en bits :", serpent_key_decrypt)
