@@ -50,7 +50,7 @@ def generate_asymetrical(bits):
 
 def generate_serpent_key():
     # La longueur de la clé en bits
-    key_length_bits = 128   
+    key_length_bits = 256
     serpent_key_bits = [random.choice([0, 1]) for _ in range(key_length_bits)]
     serpent_key = "".join(map(str, serpent_key_bits))
     return serpent_key
