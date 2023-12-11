@@ -52,7 +52,6 @@ def permutation_finale(bits):
 def segment_clef(K):
     print("La clé secrète est:", K)
     blocks = [K[i:i+32] for i in range(0, len(K), 32)]
-    print(blocks)
     return blocks
 
 def xor(x, y):
@@ -68,24 +67,18 @@ def rotate_left(value, shift, bit_length=32):
 def K_i_gen(K):
     constante = '10011110001101110111100110111001' #constante omega from hex to binary
     w = segment_clef(K)
-    w_i = w
+    w_i = w.copy()
     K_i = [''.join((w[0], w[1], w[2], w[3]))]
-    print(K_i)
     
 
     for i in range(8, 132):
         w.append(xor(xor(xor(xor(xor(w[i-8], w[i-5]), w[i-3]), w[i-1]), constante), bin(i)[2:]))
         rotated_value = rotate_left(int(w[i], 2), 11, 32)
         w_i.append(format(rotated_value, '032b'))
-    print(w[10])
-    print(w_i[10])
-
-    # print(xor(xor(xor(xor(xor(w[0], w[3]), w[5]), w[7]), constante), bin(8)[2:]))
-    # print((xor(xor(xor(xor(xor(w[0], w[3]), w[5]), w[7]), constante), bin(8)[2:])) << 11)
     
-    # for i in range (1,33):
-    #     K_i.append(''.join((w[i*4], w[i*4+1], w[i*4+2], w[i*4+3])))
-    #     print(K_i[i])
+    for i in range (1,33):
+        K_i.append(''.join((w[i*4], w[i*4+1], w[i*4+2], w[i*4+3])))
+    return K_i
 
 # M=input("Entrez ce que vous souhaitez chiffrer :")
 # permute = permutation_initiale(M)
@@ -96,3 +89,4 @@ def K_i_gen(K):
 
 K = "0101111010100110111001111001111101010011111000001010110001100011110011000010101101111001111010111110110111110011101110110100111001111111011110101100000011110011011011100000110101010100001101100111001010011011000000100000011011011000100100110001001101010010"
 w=K_i_gen(K)
+print(w)
