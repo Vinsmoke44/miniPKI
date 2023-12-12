@@ -1,20 +1,28 @@
-import struct
-
 def rotate(n, b):
     return ((n << b) | (n >> (32 - b))) & 0xFFFFFFFF
 
 def padding(data):
+    # Ajoute le bit '1' suivi de zéros jusqu'à la longueur correcte
     padding = b"\x80" + b"\x00" * (63 - (len(data) + 8) % 64)
-    padded_data = data + padding + struct.pack(">Q", 8 * len(data))
+    
+    # Ajoute la longueur du message original en bits
+    length_bits = (8 * len(data)).to_bytes(8, byteorder='big')
+    
+    padded_data = data + padding + length_bits
     return padded_data
 
 def split_blocks(padded_data):
     return [padded_data[i : i + 64] for i in range(0, len(padded_data), 64)]
 
 def expand_block(block):
-    w = list(struct.unpack(">16L", block)) + [0] * 64
+    w = [0] * 80
+    for i in range(16):
+        start = i * 4
+        w[i] = int.from_bytes(block[start:start+4], byteorder='big')
+
     for i in range(16, 80):
         w[i] = rotate(w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16], 1)
+
     return w
 
 def final_hash(data):
@@ -64,6 +72,6 @@ def calculate_sha1_hash(text):
     return final_hash(hash_input)
 
 # Example generation hash
-# text_to_hash = "Hello World!! Welcome to Cryptography"
+# text_to_hash = "test"
 # result_hash = calculate_sha1_hash(text_to_hash)
 # print(result_hash)
