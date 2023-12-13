@@ -7,7 +7,8 @@ from doc_chest import *
 from key_generator import *
 from send import *
 from receive import *
-import sys
+from hash import *
+from datetime import datetime, timedelta
 import os
 import re
 from colorama import Fore, Style
@@ -68,9 +69,6 @@ def verify_tree():
             message = os.path.join("bob", "messages")   
             with open(message, 'w'):
                 pass
-            message = os.path.join("tier", "certificates")  
-            with open(message, 'w'):
-                pass
             n, e, d = generate_asymetrical(512)
             message = os.path.join("tier", "id_serp")  
             with open(message, 'w') as f:
@@ -78,6 +76,8 @@ def verify_tree():
             message = os.path.join("tier", "id_rsa.pub")  
             with open(message, 'w') as f:
                 f.write('\n'.join([str(n), str(e)]))
+            certificates = os.path.join("tier", "certificates")  
+            os.makedirs(certificates)
         else:
             exit()
         print("Architecture PKI créée")
@@ -122,19 +122,94 @@ def is_valid_birthdate(birthdate):
     birthdate_pattern = r'^\d{1,2}/\d{1,2}/\d{4}$'
     return re.match(birthdate_pattern, birthdate) is not None
 
-def check_certificate(username):
-    with open("tier/certificates", 'r') as file:
-        for line in file:
-            fields = line.strip().split(',')
-            if fields and fields[0] == username:
-                return True
+def check_generated_certificate(username):
+    if os.path.exists(os.path.join(username, "serp.cert")) and os.path.exists(os.path.join("tier", "certificates", username + ".cert")):
+        return True
+    else:
         return False
+    
+def generate_sign_certificate(mail, born, n , e, utilisateur):
+    print("Generation du certificat")
+    #Generation de la signature
+    concat = utilisateur + mail + born + n + e
+    sha1hash=sha1(concat)
+    hash_int = int(sha1hash, 16)
+    #Chiffrement du hash avec la clé privé de l'autorité
+    filepath="tier/id_serp"
+    with open(filepath, 'r') as f:
+        lignes = f.readlines()
+        if len(lignes) >= 2:
+            n_tier = lignes[0].strip()
+            d_tier = lignes[1].strip()
+        else: 
+            print("Clés du tier de confiance non valides")
+    signature = encrypt_rsa(hash_int, int(n_tier), int(d_tier))
+    expiration = datetime.now() + timedelta(days=1)
+    path = os.path.join(utilisateur, "serp.cert")
+    with open(path, 'w') as f:
+        f.write("USER: " + utilisateur + "\n")
+        f.write("MAIL ADDRESS: " + mail + "\n")
+        f.write("USER BITHDAY: " + born + "\n")
+        f.write("PUBLIC KEY: " + n + "," + e + "\n")
+        f.write("SIGNATURE: " + str(signature) + "\n")
+        f.write("EXPIRATION DATE: " + str(expiration))
+    user_cert= utilisateur + ".cert"
+    path = os.path.join("tier", "certificates", user_cert )
+    with open(path, 'w') as f:
+        f.write("USER: " + utilisateur + "\n")
+        f.write("MAIL ADDRESS: " + mail + "\n")
+        f.write("USER BITHDAY: " + born + "\n")
+        f.write("PUBLIC KEY: " + n + "," + e + "\n")
+        f.write("SIGNATURE: " + str(signature) + "\n")
+        f.write("EXPIRATION DATE: " + str(expiration))
+
+def valid_own_certificate(utilisateur):
+    if check_generated_certificate(utilisateur):
+        path1 = os.path.join(utilisateur, "serp.cert")
+        user_cert= utilisateur + ".cert"
+        path2 = os.path.join("tier", "certificates", user_cert )
+        with open(path1, 'rb') as f1, open(path2, 'rb') as f2:
+            content1 = f1.read()
+            content2 = f2.read()
+        with open(path1, 'r') as f: 
+            lines = f.readlines()
+            key_cert_n = int(lines[3].split(":")[1].replace(" ", "").split(",")[0])
+            key_cert_e = int(lines[3].split(":")[1].replace(" ", "").split(",")[1])
+            expiration_line = lines[5].split(":")[1:]
+            expiration_str = ":".join(expiration_line).strip()
+            expiration_date = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M:%S.%f")
+            date_now = datetime.now()
+        pub_key_path=os.path.join(utilisateur, "id_serp.pub")
+        with open(pub_key_path, 'r') as f:
+            lines = f.readlines()
+            key_pub_file_n = int(lines[0].strip())
+            key_pub_file_e = int(lines[1].strip())
+        print(key_pub_file_n, key_cert_n)
+        print(key_pub_file_e, key_cert_e)
+
+        if content1 == content2:
+            if date_now < expiration_date:
+                if key_pub_file_n == key_cert_n: 
+                    if key_pub_file_e == key_cert_e:
+                        return True
+                    else: 
+                        return False
+                else: 
+                    return False
+            else: 
+                return False
+        else:
+            return False
+    else: 
+        return False
+
+    
 def main():
     verify_tree()
     utilisateur = verify_user()
     afficher_serpent()
     menu()
-    check_certificate(utilisateur)
+    check_generated_certificate(utilisateur)
     while True:  
         print(f"\nUser: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
         if verify_tree():
@@ -145,10 +220,14 @@ def main():
             print(f"Clés asymetriques: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else:
             print(f"Clés asymetriques: [{Fore.RED}X{Style.RESET_ALL}]")
-        if check_certificate(utilisateur):
+        if check_generated_certificate(utilisateur):
             print(f"Certificat généré: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else: 
             print(f"Certificat généré: [{Fore.RED}X{Style.RESET_ALL}]")
+        if valid_own_certificate(utilisateur):
+            print(f"Certificat utilisateur valide: [{Fore.GREEN}V{Style.RESET_ALL}]")
+        else: 
+            print(f"Certificat utilisateur valide: [{Fore.RED}X{Style.RESET_ALL}]")
         choice_user = choix()
         match choice_user:
             case '1':
@@ -175,39 +254,34 @@ def main():
             case '3':
                 if verify_keys_exist(utilisateur):
                     if os.path.exists("tier/id_serp"): 
-                        creatorverif = input("Voulez vous generer (1) ou signer (2) un certificat ? \n")
-                        match creatorverif:
-                            case '1':
-                                while True: 
-                                    mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
-                                    if is_valid_email(mail):
-                                        born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
-                                        if is_valid_birthdate(born):
-                                            lignes= search_user_in_pubkeyfile(utilisateur)
-                                            n=(lignes.strip().split(';')[1])
-                                            e=(lignes.strip().split(';')[2])
-                                            with open("tier/certificates", 'a') as f:
-                                                f.write(utilisateur + "," + mail + "," + born + "," + n + "," + e)
-                                                print("Generation du certificat")
-                                                break
-                                        elif born =="0":
-                                            break
-                                        else: 
-                                            print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
-                                    elif mail =="0":
-                                        break
-                                    else:
-                                        print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
-                            case '2':
-                                pass
-                            case _: 
-                                print("Mauvais choix, veuillez choisir entre 1 et 2")
+                        while True: 
+                            mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
+                            if is_valid_email(mail):
+                                born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
+                                if is_valid_birthdate(born):
+                                    lignes= search_user_in_pubkeyfile(utilisateur)
+                                    n=(lignes.strip().split(';')[1])
+                                    e=(lignes.strip().split(';')[2])
+                                    generate_sign_certificate(mail, born, n, e, utilisateur)
+                                    break
+                                elif born =="0":
+                                    break
+                                else: 
+                                    print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
+                            elif mail =="0":
+                                break
+                            else:
+                                print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
                     else: 
                         print("Le tier de confiance n'a pas de clé privé pour signer")
                 else: 
                     print("Il vous faut un couple de clé asymetrique afin de génerer/signer un certificat")
             case '4':
-                print("Verification de certificat")
+                if utilisateur == "bob":
+                    user_search="alice"
+                elif utilisateur == "alice":
+                    user_search="bob" 
+                print(f"Verification de certificat de {user_search}")
             case '5':
                 #case si on a pas de documents
                 print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
@@ -269,5 +343,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -67,11 +67,11 @@ def final_hash(data):
 
     return ("{:08x}" * 5).format(*h)
 
-def calculate_sha1_hash(text):
+def sha1(text):
     hash_input = bytes(text, "utf-8")
     return final_hash(hash_input)
 
 # Example generation hash
 # text_to_hash = "test"
-# result_hash = calculate_sha1_hash(text_to_hash)
+# result_hash = sha1(text_to_hash)
 # print(result_hash)
