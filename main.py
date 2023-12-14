@@ -73,7 +73,7 @@ def verify_tree():
             message = os.path.join("tier", "id_serp")  
             with open(message, 'w') as f:
                 f.write('\n'.join([str(n), str(d)]))
-            message = os.path.join("tier", "id_rsa.pub")  
+            message = os.path.join("tier", "id_serp.pub")  
             with open(message, 'w') as f:
                 f.write('\n'.join([str(n), str(e)]))
             certificates = os.path.join("tier", "certificates")  
@@ -133,6 +133,8 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
     #Generation de la signature
     concat = utilisateur + mail + born + n + e
     sha1hash=sha1(concat)
+    print(sha1hash)
+    print(concat)
     hash_int = int(sha1hash, 16)
     #Chiffrement du hash avec la clé privé de l'autorité
     filepath="tier/id_serp"
@@ -144,6 +146,7 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
         else: 
             print("Clés du tier de confiance non valides")
     signature = encrypt_rsa(hash_int, int(n_tier), int(d_tier))
+    print(hash_int, signature)
     expiration = datetime.now() + timedelta(days=1)
     path = os.path.join(utilisateur, "serp.cert")
     with open(path, 'w') as f:
@@ -184,8 +187,6 @@ def valid_own_certificate(utilisateur):
             lines = f.readlines()
             key_pub_file_n = int(lines[0].strip())
             key_pub_file_e = int(lines[1].strip())
-        print(key_pub_file_n, key_cert_n)
-        print(key_pub_file_e, key_cert_e)
 
         if content1 == content2:
             if date_now < expiration_date:
@@ -203,7 +204,41 @@ def valid_own_certificate(utilisateur):
     else: 
         return False
 
-    
+def valid_user_certificate(utilisateur):
+        path1 = os.path.join(utilisateur, "serp.cert")
+        user_cert= utilisateur + ".cert"
+        path2 = os.path.join("tier", "certificates", user_cert )
+        path3 = os.path.join("tier", "id_serp.pub")
+        with open(path3, 'r') as f:
+            lignes = f.readlines()
+            if len(lignes) >= 2:
+                n_tier = lignes[0].strip()
+                e_tier = lignes[1].strip()
+            else: 
+                print("Clés du tier de confiance non valides")
+        with open(path1, 'rb') as f1, open(path2, 'rb') as f2:
+            content1 = f1.readlines()
+            user = content1[0].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", "")
+            mail = content1[1].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", "")
+            born = content1[2].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", "")
+            n = str(content1[3].decode('utf-8').split(":")[1].replace(" ", "").split(",")[0])
+            e = str(content1[3].decode('utf-8').split(":")[1].replace(" ", "").split(",")[1])
+            #Calcule le hash de la concatenation et le convertit en strings
+            concat = (user + mail + born + n + e).replace("\n", "")
+            sha1_user=sha1(concat)
+            sha1_user_int=int(sha1_user, 16)
+            # Recupere la date d'expiration dans le certificat récuperé avec le tier
+            expiration_line = content2[5].decode('utf-8').split(":")[1:]
+            expiration_str = ":".join(expiration_line).strip()
+            expiration_date = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M:%S.%f")
+            date_now = datetime.now()
+            content2 = f2.readlines()    
+            # Dechiffre la signature avec la clé publique du tier et la compare avec le hash calculé avant
+            signature = int(content2[4].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", ""))
+            sh1sign_int=decrypt_rsa(signature, int(n_tier), int(e_tier) )
+            print(sha1_user_int, sh1sign_int)
+            if sha1_user_int == sh1sign_int: 
+                print("ok")
 def main():
     verify_tree()
     utilisateur = verify_user()
