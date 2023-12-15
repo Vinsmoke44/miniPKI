@@ -36,15 +36,19 @@ def afficher_serpent():
                        """
     print(serpent)
 
-def menu():
+def menu(utilisateur):
+    if utilisateur == "bob":
+        user_search="alice"
+    elif utilisateur == "alice":
+        user_search="bob"
     print("Bonjour ô maître Rémi ! Que souhaitez-vous faire aujourd'hui ?")
     print("->1<- Chiffrer / déchiffrer des messages.")
     print("->2<- Créer un couple de clés publique / privée (générer un grand nombre premier).")
     print("->3<- Signer / générer un certificat.")
-    print("->4<- Vérifier un certificat.")
+    print(f"->4<- Vérifier le certificat de {user_search}.")
     print("->5<- Enregistrer un document dans le coffre-fort.")
-    print("->6<- Envoyer un message (asynchrone).")
-    print("->7<- Demander une preuve de connaissance.")
+    print(f"->6<- Envoyer un message (asynchrone) à {user_search}.")
+    print(f"->7<- Demander une preuve de connaissance à {user_search}.")
     print("->8<- Creer un block chain")
     print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
     print("->10<- Re afficher le menu")
@@ -133,8 +137,6 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
     #Generation de la signature
     concat = utilisateur + mail + born + n + e
     sha1hash=sha1(concat)
-    print(sha1hash)
-    print(concat)
     hash_int = int(sha1hash, 16)
     #Chiffrement du hash avec la clé privé de l'autorité
     filepath="tier/id_serp"
@@ -146,7 +148,7 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
         else: 
             print("Clés du tier de confiance non valides")
     signature = encrypt_rsa(hash_int, int(n_tier), int(d_tier))
-    print(hash_int, signature)
+    # print(hash_int, signature)
     expiration = datetime.now() + timedelta(days=1)
     path = os.path.join(utilisateur, "serp.cert")
     with open(path, 'w') as f:
@@ -205,6 +207,7 @@ def valid_own_certificate(utilisateur):
         return False
 
 def valid_user_certificate(utilisateur):
+    if check_generated_certificate(utilisateur):
         path1 = os.path.join(utilisateur, "serp.cert")
         user_cert= utilisateur + ".cert"
         path2 = os.path.join("tier", "certificates", user_cert )
@@ -228,22 +231,29 @@ def valid_user_certificate(utilisateur):
             sha1_user=sha1(concat)
             sha1_user_int=int(sha1_user, 16)
             # Recupere la date d'expiration dans le certificat récuperé avec le tier
+            content2 = f2.readlines()    
             expiration_line = content2[5].decode('utf-8').split(":")[1:]
             expiration_str = ":".join(expiration_line).strip()
             expiration_date = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M:%S.%f")
             date_now = datetime.now()
-            content2 = f2.readlines()    
             # Dechiffre la signature avec la clé publique du tier et la compare avec le hash calculé avant
             signature = int(content2[4].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", ""))
             sh1sign_int=decrypt_rsa(signature, int(n_tier), int(e_tier) )
-            print(sha1_user_int, sh1sign_int)
-            if sha1_user_int == sh1sign_int: 
-                print("ok")
+        if sh1sign_int == sha1_user_int:
+            if date_now < expiration_date:
+                    return True, "ok"
+            else: 
+                return False, "exp"
+        else: 
+            return False, "sign"
+    else: 
+        return False, "file"
+
 def main():
     verify_tree()
     utilisateur = verify_user()
     afficher_serpent()
-    menu()
+    menu(utilisateur)
     check_generated_certificate(utilisateur)
     while True:  
         print(f"\nUser: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
@@ -317,6 +327,16 @@ def main():
                 elif utilisateur == "alice":
                     user_search="bob" 
                 print(f"Verification de certificat de {user_search}")
+                result, reason = valid_user_certificate(user_search)
+                if result: 
+                    print(f"{Fore.GREEN}Certificat de {user_search} valide{Style.RESET_ALL}")
+                else: 
+                    if reason == "sign":
+                        print(f"{Fore.RED}Certificat de {user_search} invalide, signature invalide{Style.RESET_ALL}")
+                    elif reason == "file":
+                        print(f"{Fore.RED}Certificat de {user_search} invalide, certificat innexistant{Style.RESET_ALL}")
+                    elif reason == "exp":
+                        print(f"{Fore.RED}Certificat de {user_search} invalide, certificat expiré{Style.RESET_ALL}")
             case '5':
                 #case si on a pas de documents
                 print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
