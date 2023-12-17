@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 def padding(message):
-    padded_message = message + '1'
     original_length = len(message)
-    padding_length = 128 - ((original_length + 1) % 128)
-    padded_message += '0' * padding_length
-    if original_length % 128 == 0:
-        padded_message += '0' * 128
+    if len(message) % 128 == 0:
+        padded_message = message
+    else:
+        padded_message = message + '1'
+        padding_length = 128 - ((original_length + 1) % 128)
+        padded_message += '0' * padding_length
     return padded_message
 
 def text_to_bits(text):                                         #text to binaire
@@ -17,37 +18,34 @@ def bits_to_text(bits):
     text = ''.join(chr(int(bits[i:i+8], 2)) for i in range(0, len(bits), 8))
     return text
 
-def segment(bits):
-    #divise en blocs de 128 bits
-    blocks = [bits[i:i+128] for i in range(0, len(bits), 128)]
-    # Applique le bourrage à la fin de la dernière partie si nécessaire
-    last_block_index = len(blocks) - 1
-    blocks[last_block_index] = padding(blocks[last_block_index])
-    return blocks
+# def segment(bits):
+#     #divise en blocs de 128 bits
+#     blocks = [bits[i:i+128] for i in range(0, len(bits), 128)]
+#     # Applique le bourrage à la fin de la dernière partie si nécessaire
+#     last_block_index = len(blocks) - 1
+#     blocks[last_block_index] = padding(blocks[last_block_index])
+#     return blocks
 
 
-def permutation_initiale(message):
-    B = segment(text_to_bits(message))
-    # print("Blocs avant permutation initia:", B)
+def permutation_initiale(bloc):
+    result = 0
+    for i in range(128):
+        # Obtient la valeur du bit situé à (32 * i) % 127
+        bit = (bloc >> ((32 * i) % 127)) & 1
 
-    # Applique la permutation initiale à chaque bloc
-    resultat = [''.join(bloc[(32 * i) % 127] for i in range(128)) for bloc in B]
-    # print("Blocs après permutation initia:", resultat)
-    # Concatène les blocs pour obtenir le message chiffré final
-    # permutI = ''.join(resultat)
-    return resultat
+        # Place la valeur du bit à la position i
+        result |= bit << i
+    return result
 
 
-def permutation_finale(bits):
-    # B = segment(bits)
-    # print("Blocs avant permutation finale:", bits)
-
-    # Inverse la permutation initiale à chaque bloc
-    resultat = [''.join(bloc[(4 * i) % 127] for i in range(128)) for bloc in bits]
-    # print("Blocs après permutation finale:", resultat)
-    # Concatène les blocs pour obtenir le message déchiffré final
-    permutF = (resultat)
-    return permutF
+def permutation_finale(bloc):
+    result = 0
+    for i in range(128):
+        # Obtient la valeur du bit à la position 
+        bit = (int(bloc, 2) >> ((4 * i) % 127)) & 1
+        # Place la valeur du bit à la position i dans le nouveau bloc
+        result |= bit << i
+    return result
 
 def segment_bits(K, j):
     blocks = [K[i:i+j] for i in range(0, len(K), j)]
@@ -61,6 +59,13 @@ def rotate_left(value, shift, bit_length=32):
     value = value & ((1 << bit_length) - 1)
     # Effectuez la rotation vers la gauche
     result = (value << shift) | (value >> (bit_length - shift))
+    return result & ((1 << bit_length) - 1)
+
+def left_gap(value, shift, bit_length=32):
+    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+    value = value & ((1 << bit_length) - 1)
+    # Effectuez la rotation vers la gauche
+    result = (value << shift)
     return result & ((1 << bit_length) - 1)
 
 def K_i_gen(K):
@@ -79,20 +84,8 @@ def K_i_gen(K):
         K_i.append(''.join((w[i*4], w[i*4+1], w[i*4+2], w[i*4+3])))
     return K_i
 
-def permute_sboxes(sbox):
-    new_sbox = [row[:] for row in sbox]  # Crée une copie de la S-box d'origine
-    # new_sbox = sbox.copy()
-    for index_box in range(32):
-        for index_bits in range(16):
-            i = (index_bits + sbox[index_box][index_bits]) % 32
-            j = sbox[i][index_bits]
-            # Swap
-            new_sbox[index_box][index_bits], new_sbox[index_box][j] = new_sbox[index_box][j], new_sbox[index_box][index_bits]
-
-    return new_sbox
-
 def calculate_sboxes():
-    sbox = [
+    sbox_0 = [
 [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7],
 [0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8],
 [4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0],
@@ -125,13 +118,19 @@ def calculate_sboxes():
 [1, 15, 13, 8, 10, 3, 7, 4, 12, 5, 6, 11, 0, 14, 9, 2],
 [7, 11, 4, 1, 9, 12, 14, 2, 0, 6, 10, 13, 15, 3, 5, 8],
 [2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11]]
+    
+    sboxes = []
+    sboxes.append(sbox_0)
 
-    sboxes = [sbox]  # Initialise la liste avec la S-box d'origine
-
-    for _ in range(1, 32):
-        sbox = permute_sboxes(sbox)
-        sboxes.append(sbox)
-
+    for k in range(1, 32):
+        new_sbox = [row[:] for row in sboxes[k-1]]  # Deep copy of sboxes[k-1]
+        for index_box in range(32):
+            for index_bits in range(16):
+                i = index_bits + new_sbox[index_box][index_bits]
+                j = new_sbox[i][index_bits]
+                # Swap
+                new_sbox[index_box][index_bits], new_sbox[index_box][j] = new_sbox[index_box][j], new_sbox[index_box][index_bits]
+        sboxes.append(new_sbox)
     return sboxes
 
 
@@ -144,34 +143,53 @@ def apply_sbox(input_nibble, sbox, row):
     
     return output_nibble
 
-# def linear_transfo(B_0, K_i, sboxes):
-#     B_i = [B_0]
-#     print(xor(''.join(B_i[0]), K_i[0]))
-#     print(permute_sboxes((xor(''.join(B_i[0]), K_i[0]))))
-    
-#     for i in range(33):
-#         xor = (xor(''.join(B_i[i]), K_i[i]))
-#         print((sboxes[i])(xor(''.join(B_i[i]), K_i[i])))
-#         print(X1)
+def B_iterations(B_0, K_i):
+    for j in range(31):
+        sbox = j #recupere sboxes[j]
+        res_xor = segment_bits(xor(B_0, K_i[j]), 4)
+        appli_sbox = []
+        for i in range(32):
+            appli_sbox.append(format(apply_sbox(int(res_xor[i]), sboxes[j], i), '04b'))
+        X0, X1, X2, X3 = segment_bits(''.join(appli_sbox), 32)
+        X0 = format(rotate_left(int(X0, 2), 3, 32), '032b')
+        X2 = format(rotate_left(int(X2, 2), 3, 32), '032b')
+        X1 = xor(xor(X1, X0), X2)
+        X3 = xor(xor(X3, X2), format(left_gap(int(X0, 2), 3), '032b'))
+        X1 = format(rotate_left(int(X1, 2), 1, 32), '032b')
+        X3 = format(rotate_left(int(X3, 2), 7, 32), '032b')
+        X0 = xor(xor(X0, X1), X3)
+        X2 = xor(xor(X2, X3), format(left_gap(int(X1, 2), 7), '032b'))
+        X0 = format(rotate_left(int(X0, 2), 5, 32), '032b')
+        X2 = format(rotate_left(int(X2, 2), 2, 32), '032b')
+        B_0 = ''.join([X0, X1, X2, X3])
+    res_xor = segment_bits(xor(B_0, K_i[31]), 4)
+    appli_sbox = []
+    for i in range(32):
+        appli_sbox.append(format(apply_sbox(int(res_xor[i]), sboxes[31], i), '04b'))
+    B_32 = xor(''.join(appli_sbox), K_i[32])
+    return B_32
 
 sboxes = calculate_sboxes()
 
-message = input("Entrez ce que vous souhaitez chiffrer :")
-B_0 = permutation_initiale(message)
-B_i = [B_0]
+message = ('hello world hehe')
+M = segment_bits(padding(text_to_bits(message)), 128)
+# for i in range(len(M)):
+print("bas:", format(int(M[0], 2), '0128b'))
+B_0 = format(permutation_initiale(int(M[0], 2)), '0128b')
+print("B_0:", B_0)
+test = permutation_finale(B_0)
+print("fin:", format(test, '0128b'))
 
-K = "0101111010100110111001111001111101010011111000001010110001100011110011000010101101111001111010111110110111110011101110110100111001111111011110101100000011110011011011100000110101010100001101100111001010011011000000100000011011011000100100110001001101010010"
-K_i=K_i_gen(K)
 
+# K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
+# K_i = K_i_gen(K)
 
-res_xor = segment_bits(xor(''.join(B_0), K_i[0]), 4)
-appli_sbox = []
-# for j in range(32):
-#     sbox = j #recupere sboxes[j]
-for i in range(32):
-    appli_sbox.append(format(apply_sbox(int(res_xor[i]), sboxes[0], i), '04b'))
-X0, X1, X2, X3 = segment_bits(''.join(appli_sbox), 32)
-print(X3)
+# B_32 = B_iterations(B_0, K_i)
+
+# print("B_32", B_32)
+# print(sboxes[1])
+# C = format(permutation_finale(B_32), '0128b')
+# print("C:", C)
 
 
 # permF = ''.join(permutation_finale(permute))
