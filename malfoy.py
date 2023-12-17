@@ -10,26 +10,13 @@ def padding(message):
         padded_message += '0' * padding_length
     return padded_message
 
-def text_to_bits(text):                                         #text to binaire
+def text_to_bits(text):
     bits = ''.join(format(ord(char), '08b') for char in text)
     return bits
 
-def bits_to_text(bits):
-    text = ''.join(chr(int(bits[i:i+8], 2)) for i in range(0, len(bits), 8))
-    return text
-
-# def segment(bits):
-#     #divise en blocs de 128 bits
-#     blocks = [bits[i:i+128] for i in range(0, len(bits), 128)]
-#     # Applique le bourrage à la fin de la dernière partie si nécessaire
-#     last_block_index = len(blocks) - 1
-#     blocks[last_block_index] = padding(blocks[last_block_index])
-#     return blocks
-
-
 def permutation_initiale(bloc):
     result = 0
-    for i in range(128):
+    for i in range(127):
         # Obtient la valeur du bit situé à (32 * i) % 127
         bit = (bloc >> ((32 * i) % 127)) & 1
 
@@ -40,7 +27,7 @@ def permutation_initiale(bloc):
 
 def permutation_finale(bloc):
     result = 0
-    for i in range(128):
+    for i in range(127):
         # Obtient la valeur du bit à la position 
         bit = (int(bloc, 2) >> ((4 * i) % 127)) & 1
         # Place la valeur du bit à la position i dans le nouveau bloc
@@ -171,28 +158,16 @@ def B_iterations(B_0, K_i):
 
 sboxes = calculate_sboxes()
 
-message = ('hello world hehe')
+message = ('hello world hehee')
 M = segment_bits(padding(text_to_bits(message)), 128)
-# for i in range(len(M)):
-print("bas:", format(int(M[0], 2), '0128b'))
-B_0 = format(permutation_initiale(int(M[0], 2)), '0128b')
-print("B_0:", B_0)
-test = permutation_finale(B_0)
-print("fin:", format(test, '0128b'))
+K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
+K_i = K_i_gen(K)
+C = []
+for i in range(len(M)):
+    print("bas:", format(int(M[i], 2), '0128b'))
+    B_0 = format(permutation_initiale(int(M[i], 2)), '0128b')
 
-
-# K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
-# K_i = K_i_gen(K)
-
-# B_32 = B_iterations(B_0, K_i)
-
-# print("B_32", B_32)
-# print(sboxes[1])
-# C = format(permutation_finale(B_32), '0128b')
-# print("C:", C)
-
-
-# permF = ''.join(permutation_finale(permute))
-# print((bits_to_text(permF)))
-# msg = bits_to_text(permF)
-# print(msg)
+    B_32 = B_iterations(B_0, K_i)
+    
+    C.append(format(permutation_finale(B_32), '0128b'))
+    print("C:", C)
