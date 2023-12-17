@@ -158,16 +158,15 @@ def B_iterations(B_0, K_i):
 
 sboxes = calculate_sboxes()
 
-message = ('hello world hehee')
+message = ('hello world hehe')
 M = segment_bits(padding(text_to_bits(message)), 128)
 K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
 K_i = K_i_gen(K)
 C = []
 for i in range(len(M)):
-    print("bas:", format(int(M[i], 2), '0128b'))
     B_0 = format(permutation_initiale(int(M[i], 2)), '0128b')
 
     B_32 = B_iterations(B_0, K_i)
     
     C.append(format(permutation_finale(B_32), '0128b'))
-    print("C:", C)
+print("C:", C)
