@@ -374,6 +374,26 @@ def main():
                     print(f"Les 2 utilisateurs n'ont pas crées de clés asymetriques")                  
             case '7':
                 print("Demande de preuve de connaissance")
+                filepath="tier/id_serp.pub"
+                with open(filepath, 'r') as f:
+                    lignes = f.readlines()
+                    if len(lignes) >= 2:
+                        n_tier = lignes[0].strip()
+                        e_tier = lignes[1].strip()
+                proof_init = random.randint( 0, 65537 )
+                private=encrypt_rsa(proof_init, int(n_tier), int(e_tier))
+                # On est censé ici envoyer la preuve chiffré a l'entité
+                filepath="tier/id_serp"
+                with open(filepath, 'r') as f:
+                    lignes = f.readlines()
+                    if len(lignes) >= 2:
+                        n_tier = lignes[0].strip()
+                        d_tier = lignes[1].strip()
+                decrypted_proof=decrypt_rsa(private, int(n_tier), int(d_tier))
+                if proof_init == decrypted_proof: 
+                    print(f"{Fore.GREEN}Preuve verifié{Style.RESET_ALL}")
+                else: 
+                    print(f"{Fore.RED}Preuve invalide{Style.RESET_ALL}")
             case '8':
                 print("Bloc chain")
             case '9':
