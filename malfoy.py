@@ -14,24 +14,21 @@ def text_to_bits(text):
     bits = ''.join(format(ord(char), '08b') for char in text)
     return bits
 
-def permutation_initiale(bloc):
-    result = 0
-    for i in range(127):
-        # Obtient la valeur du bit situé à (32 * i) % 127
-        bit = (bloc >> ((32 * i) % 127)) & 1
-
-        # Place la valeur du bit à la position i
-        result |= bit << i
+def permutation_initiale(IPTable, bloc):
+    if len(bloc) != len(IPTable):
+        raise ValueError
+    result = ""
+    for i in range(len(IPTable)):
+        result = result + bloc[IPTable[i]]
     return result
 
 
-def permutation_finale(bloc):
-    result = 0
-    for i in range(127):
-        # Obtient la valeur du bit à la position 
-        bit = (int(bloc, 2) >> ((4 * i) % 127)) & 1
-        # Place la valeur du bit à la position i dans le nouveau bloc
-        result |= bit << i
+def permutation_finale(FPTable, bloc):
+    if len(bloc) != len(FPTable):
+        raise ValueError
+    result = ""
+    for i in range(len(FPTable)):
+        result = result + bloc[FPTable[i]]
     return result
 
 def segment_bits(K, j):
@@ -132,7 +129,6 @@ def apply_sbox(input_nibble, sbox, row):
 
 def B_iterations(B_0, K_i):
     for j in range(31):
-        sbox = j #recupere sboxes[j]
         res_xor = segment_bits(xor(B_0, K_i[j]), 4)
         appli_sbox = []
         for i in range(32):
@@ -149,6 +145,7 @@ def B_iterations(B_0, K_i):
         X0 = format(rotate_left(int(X0, 2), 5, 32), '032b')
         X2 = format(rotate_left(int(X2, 2), 2, 32), '032b')
         B_0 = ''.join([X0, X1, X2, X3])
+        print("B", j+1, "=", B_0)
     res_xor = segment_bits(xor(B_0, K_i[31]), 4)
     appli_sbox = []
     for i in range(32):
@@ -160,13 +157,24 @@ sboxes = calculate_sboxes()
 
 message = ('hello world hehe')
 M = segment_bits(padding(text_to_bits(message)), 128)
+
+IPTable = [
+    0, 32, 64, 96, 1, 33, 65, 97, 2, 34, 66, 98, 3, 35, 67, 99, 4, 36, 68, 100, 5, 37, 69, 101, 6, 38, 70, 102, 7, 39, 71, 103, 8, 40, 72, 104, 9, 41, 73, 105, 10, 42, 74, 106, 11, 43, 75, 107, 12, 44, 76, 108, 13, 45, 77, 109, 14, 46, 78, 110, 15, 47, 79, 111, 16, 48, 80, 112, 17, 49, 81, 113, 18, 50, 82, 114, 19, 51, 83, 115, 20, 52, 84, 116, 21, 53, 85, 117, 22, 54, 86, 118, 23, 55, 87, 119, 24, 56, 88, 120, 25, 57, 89, 121, 26, 58, 90, 122, 27, 59, 91, 123, 28, 60, 92, 124, 29, 61, 93, 125, 30, 62, 94, 126, 31, 63, 95, 127]
+FPTable = [
+    0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, 117, 121, 125, 2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127]
+
 K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
 K_i = K_i_gen(K)
+
 C = []
 for i in range(len(M)):
-    B_0 = format(permutation_initiale(int(M[i], 2)), '0128b')
+    B_0 = permutation_initiale(IPTable, M[i])
 
     B_32 = B_iterations(B_0, K_i)
     
-    C.append(format(permutation_finale(B_32), '0128b'))
+    C.append(permutation_finale(FPTable, B_32))
+
+print("B:", B_32)
 print("C:", C)
+print(len(''.join(C)))
+print(permutation_initiale(IPTable, ''.join(C)))
