@@ -29,8 +29,10 @@ def inverse_modulaire(a, m):
     return x1 + m0 if x1 < 0 else x1
 
 def generate_asymetrical(bits):
-    p = generer_nombre_premier(bits)
-    q = generer_nombre_premier(bits)
+    # p = generer_nombre_premier(bits)
+    # q = generer_nombre_premier(bits)
+    p = 45427892858481394071686190649738831656137145778469793250959984709250004157335359
+    q = 47388090603832016196633832303788951973268922921040957944741354648812028493909367
     n = p * q
     phi_n = (p - 1) * (q - 1)
 
@@ -66,10 +68,10 @@ def decrypt_rsa(ciphertext, n , d):
     return plaintext
 
 # Test generer asymetrique et symetrique
-# n,e,d = generate_asymetrical(512)
-# cle_publique = (n, e)
-# cle_privee = (n, d)
-# cle_symetrique = generate_serpent_key()
+n,e,d = generate_asymetrical(512)
+cle_publique = (n, e)
+cle_privee = (n, d)
+cle_symetrique = generate_serpent_key()
 
 # Test chiffrer clé symetrique avec clé privé
 # print(cle_symetrique)
@@ -78,10 +80,10 @@ def decrypt_rsa(ciphertext, n , d):
 # print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
  
 # Test dechiffrer clé symetrique avec clés privée
-# cle_symetrique_dechiffree = decrypt_rsa(cle_symetrique_chiffree, n,e)
-# cle_symetrique_dechiffree_bits = [int(b) for b in bin(cle_symetrique_dechiffree)[2:].zfill(128)]
-# serpent_key_decrypt = "".join(map(str, cle_symetrique_dechiffree_bits))
-# print("Clé symétrique déchiffrée en bits :", serpent_key_decrypt)
+cle_symetrique_dechiffree = decrypt_rsa(3094125385345615675963258924704989282537558439039890152290668050745104172983609213, n,d)
+cle_symetrique_dechiffree_bits = [int(b) for b in bin(cle_symetrique_dechiffree)[2:].zfill(128)]
+serpent_key_decrypt = "".join(map(str, cle_symetrique_dechiffree_bits))
+print("Clé symétrique déchiffrée en bits :", serpent_key_decrypt)
 
 
 #Test clé asymetrique
