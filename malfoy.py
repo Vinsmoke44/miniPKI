@@ -1,74 +1,89 @@
 #!/usr/bin/env python3
 
+def text_to_bits(text):
+    # First thing to do, switch the message we want to send from ascii to binary
+    bits = ''.join(format(ord(char), '08b') for char in text)
+    return bits
+
 def padding(message):
+    
     original_length = len(message)
     if len(message) % 128 == 0:
+        # If message=128, we don't add anything to the original message
         padded_message = message
     else:
+        # Else, we add a 1 followed by 0s until it's a 128 multiple
         padded_message = message + '1'
         padding_length = 128 - ((original_length + 1) % 128)
         padded_message += '0' * padding_length
     return padded_message
 
-def text_to_bits(text):
-    bits = ''.join(format(ord(char), '08b') for char in text)
-    return bits
-
 def permutation_initiale(IPTable, bloc):
     if len(bloc) != len(IPTable):
+        # The permuted bloc has the same len as the permutation table
         raise ValueError
     result = ""
     for i in range(len(IPTable)):
+        # We use the initial permutation table to permute the bloc
         result = result + bloc[IPTable[i]]
     return result
 
-
 def permutation_finale(FPTable, bloc):
     if len(bloc) != len(FPTable):
+        # The permuted bloc has the same len as the permutation table
         raise ValueError
     result = ""
     for i in range(len(FPTable)):
+        # We use the final permutation table to permute the bloc
         result = result + bloc[FPTable[i]]
     return result
 
 def segment_bits(K, j):
+    # Takes a K bloc and segment it in j-bits blocs
     blocks = [K[i:i+j] for i in range(0, len(K), j)]
     return blocks
 
 def xor(x, y):
+    # Xor function between x and y
     return '{1:0{0}b}'.format(len(x), int(x, 2) ^ int(y, 2))
 
 def rotate_left(value, shift, bit_length=32):
-    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+    # We first make sure that value=bit_length
     value = value & ((1 << bit_length) - 1)
-    # Effectuez la rotation vers la gauche
+    # Left rotation without losing any bits
     result = (value << shift) | (value >> (bit_length - shift))
     return result & ((1 << bit_length) - 1)
 
 def left_gap(value, shift, bit_length=32):
-    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+    # We first make sure that value=bit_length
     value = value & ((1 << bit_length) - 1)
-    # Effectuez la rotation vers la gauche
+    # Left gap, loss of the first $shift bits
     result = (value << shift)
     return result & ((1 << bit_length) - 1)
 
 def K_i_gen(K):
-    constante = '10011110001101110111100110111001' #constante omega from hex to binary
+    # Omega constant from hex to binary
+    constant = '10011110001101110111100110111001'
+    # K segmentation to get the first 8 w blocs
     w = segment_bits(K, 32)
     w_i = w.copy()
+    # K_i initialisation with K_i[0]
     K_i = [''.join((w[0], w[1], w[2], w[3]))]
     
 
     for i in range(8, 132):
-        w.append(xor(xor(xor(xor(xor(w[i-8], w[i-5]), w[i-3]), w[i-1]), constante), bin(i)[2:]))
+        # Formation of the additional w blocs 
+        w.append(xor(xor(xor(xor(xor(w[i-8], w[i-5]), w[i-3]), w[i-1]), constant), bin(i)[2:]))
         rotated_value = rotate_left(int(w[i], 2), 11, 32)
         w_i.append(format(rotated_value, '032b'))
     
     for i in range (1,33):
+        # K_i completion thanks to the w blocs
         K_i.append(''.join((w[i*4], w[i*4+1], w[i*4+2], w[i*4+3])))
     return K_i
 
 def calculate_sboxes():
+    # S0 built following DES 32 tables for initialization
     sbox_0 = [
 [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7],
 [0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8],
@@ -107,33 +122,38 @@ def calculate_sboxes():
     sboxes.append(sbox_0)
 
     for k in range(1, 32):
-        new_sbox = [row[:] for row in sboxes[k-1]]  # Deep copy of sboxes[k-1]
+        # Deep copy of sboxes[k-1]
+        new_sbox = [row[:] for row in sboxes[k-1]]
+        # Then, we find sbox[i] with permutations on sbox[i-1]
         for index_box in range(32):
             for index_bits in range(16):
                 i = index_bits + new_sbox[index_box][index_bits]
                 j = new_sbox[i][index_bits]
-                # Swap
+                # We swap attributes in the sbox
                 new_sbox[index_box][index_bits], new_sbox[index_box][j] = new_sbox[index_box][j], new_sbox[index_box][index_bits]
         sboxes.append(new_sbox)
     return sboxes
 
 
 def apply_sbox(input_nibble, sbox, row):
-    # Assurez-vous que l'entrée est un entier de 4 bits
-    col = input_nibble & 0xF
-    
-    # Récupérez la valeur de la S-box
+    # The 4-bits nibble forms the column of the sbox
+    col = input_nibble
+    # We find the output value at the correct location
     output_nibble = sbox[row][col]
-    
     return output_nibble
 
-def B_iterations(B_0, K_i):
+def B_iterations(B, K_i):
+    # The input is B_0 and K_i table and the ouput will be B_32
     for j in range(31):
-        res_xor = segment_bits(xor(B_0, K_i[j]), 4)
+        # After we xored B with K_i, we segment the result in 4-bits blocs
+        res_xor = segment_bits(xor(B, K_i[j]), 4)
         appli_sbox = []
         for i in range(32):
-            appli_sbox.append(format(apply_sbox(int(res_xor[i]), sboxes[j], i), '04b'))
+            # We apply the sbox to the 4-bits blocs and we append the results to appli_sbox
+            appli_sbox.append(format(apply_sbox(int(res_xor[i], 2), sboxes[j], i), '04b'))
+        # We segment appli_sbox with 32-bits blocs to find X0, X1, X2, X3
         X0, X1, X2, X3 = segment_bits(''.join(appli_sbox), 32)
+        # Linear transformation application
         X0 = format(rotate_left(int(X0, 2), 3, 32), '032b')
         X2 = format(rotate_left(int(X2, 2), 3, 32), '032b')
         X1 = xor(xor(X1, X0), X2)
@@ -144,18 +164,19 @@ def B_iterations(B_0, K_i):
         X2 = xor(xor(X2, X3), format(left_gap(int(X1, 2), 7), '032b'))
         X0 = format(rotate_left(int(X0, 2), 5, 32), '032b')
         X2 = format(rotate_left(int(X2, 2), 2, 32), '032b')
-        B_0 = ''.join([X0, X1, X2, X3])
-        print("B", j+1, "=", B_0)
-    res_xor = segment_bits(xor(B_0, K_i[31]), 4)
+        # B formation with X0, X1, X2, X3 after linear transformation
+        B = ''.join([X0, X1, X2, X3])
+    # At the end of the for loop, we have B_31 that we xor with K_31
+    res_xor = segment_bits(xor(B, K_i[31]), 4)
     appli_sbox = []
     for i in range(32):
-        appli_sbox.append(format(apply_sbox(int(res_xor[i]), sboxes[31], i), '04b'))
+        appli_sbox.append(format(apply_sbox(int(res_xor[i], 2), sboxes[31], i), '04b'))
     B_32 = xor(''.join(appli_sbox), K_i[32])
     return B_32
 
 sboxes = calculate_sboxes()
 
-message = ('hello world hehe')
+message = ('Hello world, my name is Marc !')
 M = segment_bits(padding(text_to_bits(message)), 128)
 
 IPTable = [
@@ -163,7 +184,7 @@ IPTable = [
 FPTable = [
     0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, 117, 121, 125, 2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127]
 
-K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
+K = "1001000111110000111110001111011101111001100110000110010010101101011011101000010001011010000011000010111000110010010101000100001111000111100001010100011101010101001001010001100111100101011000011100110100101101001011001101100111001010010010000100001001001110"
 K_i = K_i_gen(K)
 
 C = []
@@ -174,7 +195,4 @@ for i in range(len(M)):
     
     C.append(permutation_finale(FPTable, B_32))
 
-print("B:", B_32)
-print("C:", C)
-print(len(''.join(C)))
-print(permutation_initiale(IPTable, ''.join(C)))
+print("Le message chiffré est :", ''.join(C))

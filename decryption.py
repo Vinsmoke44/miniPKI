@@ -1,71 +1,83 @@
 #!/bin/env/python3
 
 def bits_to_text(bits):
+    # Used to switch the message we will decrypt from binary to ascii
 	text = ''.join(chr(int(bits[i:i+8], 2)) for i in range(0, len(bits), 8))
 	return text
 
 def permutation_initiale(IPTable, bloc):
     if len(bloc) != len(IPTable):
+        # The permuted bloc has the same len as the permutation table
         raise ValueError
     result = ""
     for i in range(len(IPTable)):
+        # We use the initial permutation table to permute the bloc
         result = result + bloc[IPTable[i]]
     return result
 
-
 def permutation_finale(FPTable, bloc):
     if len(bloc) != len(FPTable):
+        # The permuted bloc has the same len as the permutation table
         raise ValueError
     result = ""
     for i in range(len(FPTable)):
+        # We use the final permutation table to permute the bloc
         result = result + bloc[FPTable[i]]
     return result
 
 def segment_bits(K, j):
+    # Takes a K bloc and segment it in j-bits blocs
     blocks = [K[i:i+j] for i in range(0, len(K), j)]
     return blocks
 
 def xor(x, y):
+    # Xor function between x and y
     return '{1:0{0}b}'.format(len(x), int(x, 2) ^ int(y, 2))
 
 def rotate_left(value, shift, bit_length=32):
-    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+    # We first make sure that value=bit_length
     value = value & ((1 << bit_length) - 1)
-    # Effectuez la rotation vers la gauche
+    # Left rotation without losing any bits
     result = (value << shift) | (value >> (bit_length - shift))
     return result & ((1 << bit_length) - 1)
 
 def rotate_right(value, shift, bit_length=32):
-    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+    # We first make sure that value=bit_length
     value = value & ((1 << bit_length) - 1)
-    # Effectuez la rotation vers la droite
+    # Right rotation without losing any bits
     result = (value >> shift) | (value << (bit_length - shift))
     return result & ((1 << bit_length) - 1)
 
-def right_gap(value, shift, bit_length=32):
-    # Assurez-vous que la valeur est représentée sur le nombre de bits spécifié
+def left_gap(value, shift, bit_length=32):
+    # We first make sure that value=bit_length
     value = value & ((1 << bit_length) - 1)
-    # Effectuez la rotation vers la droite
-    result = (value >> shift)
+    # Left gap, loss of the first $shift bits
+    result = (value << shift)
     return result & ((1 << bit_length) - 1)
 
 def K_i_gen(K):
-    constante = '10011110001101110111100110111001' #constante omega from hex to binary
+    # Omega constant from hex to binary
+    constant = '10011110001101110111100110111001'
+    # K segmentation to get the first 8 w blocs
     w = segment_bits(K, 32)
     w_i = w.copy()
+    # K_i initialisation with K_i[0]
     K_i = [''.join((w[0], w[1], w[2], w[3]))]
     
 
     for i in range(8, 132):
-        w.append(xor(xor(xor(xor(xor(w[i-8], w[i-5]), w[i-3]), w[i-1]), constante), bin(i)[2:]))
+        # Formation of the additional w blocs 
+        w.append(xor(xor(xor(xor(xor(w[i-8], w[i-5]), w[i-3]), w[i-1]), constant), bin(i)[2:]))
         rotated_value = rotate_left(int(w[i], 2), 11, 32)
         w_i.append(format(rotated_value, '032b'))
     
     for i in range (1,33):
+        # K_i completion thanks to the w blocs
         K_i.append(''.join((w[i*4], w[i*4+1], w[i*4+2], w[i*4+3])))
     return K_i
 
 def calculate_sboxes():
+    # S0 built following DES 32 tables for initialization
     sbox_0 = [
 [14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7],
 [0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8],
@@ -104,66 +116,81 @@ def calculate_sboxes():
     sboxes.append(sbox_0)
 
     for k in range(1, 32):
-        new_sbox = [row[:] for row in sboxes[k-1]]  # Deep copy of sboxes[k-1]
+        # Deep copy of sboxes[k-1]
+        new_sbox = [row[:] for row in sboxes[k-1]]
+        # Then, we find sbox[i] with permutations on sbox[i-1]
         for index_box in range(32):
             for index_bits in range(16):
                 i = index_bits + new_sbox[index_box][index_bits]
                 j = new_sbox[i][index_bits]
-                # Swap
+                # We swap attributes in the sbox
                 new_sbox[index_box][index_bits], new_sbox[index_box][j] = new_sbox[index_box][j], new_sbox[index_box][index_bits]
         sboxes.append(new_sbox)
     return sboxes
 
 def desapply_sbox(output_nibble, sbox, row):
-    # Trouvez la position originale de la valeur dans la S-box
-    col = sbox[row].index(output_nibble & 0xF)
-    
-    return col
+    # Inverse search in the sbox to find the column number where the output_nibble value is in the row
+    col = sbox[row].index(output_nibble)
+    # Input_nibble takes the value in the sbox[row] at the column we found before
+    input_nibble = ((row << 4) | col) % 16
+    return input_nibble
 
-C = '11111101100101000100110100000101101111000011000001011100100000100011101111110001011110010111001010010111001100110010001011110101'
+def inv_B_iterations(B_32, K_i):
+    # The input is B_32 and K_i table and the ouput will be B_32
+    # Xor inverse is xor
+    tmp = xor(B_32, K_i[32])
+    res_xor = segment_bits(tmp, 4)
+    # Xor result 4-bits segmentation to prepare apply_sbox inverse (desapply_sbox)
+    desappli_sbox = []
+    for i in range(32):
+        # Sbox application inverse stored in desappli_sbox
+        desappli_sbox.append(format(desapply_sbox(int(res_xor[i], 2), sboxes[31], i), '04b'))
+    # Xor the result with K_i[31] to find B_31
+    B_31 = xor(''.join(desappli_sbox), K_i[31])
+    B = B_31
+    for j in range(30, -1, -1):
+        # for loop to find B(j) from B(j+1)
+        X0, X1, X2, X3 = segment_bits(B, 32)
+        # Linear transformation inverse
+        X2 = format(rotate_right(int(X2, 2), 2, 32), '032b')
+        X0 = format(rotate_right(int(X0, 2), 5, 32), '032b')
+        X2 = xor(xor(X2, X3), format(left_gap(int(X1, 2), 7), '032b'))
+        X0 = xor(xor(X0, X1), X3)
+        X3 = format(rotate_right(int(X3, 2), 7, 32), '032b')
+        X1 = format(rotate_right(int(X1, 2), 1, 32), '032b')
+        X3 = xor(xor(X3, X2), format(left_gap(int(X0, 2), 3), '032b'))
+        X1 = xor(xor(X1, X0), X2)
+        X2 = format(rotate_right(int(X2, 2), 3, 32), '032b')
+        X0 = format(rotate_right(int(X0, 2), 3, 32), '032b')
+        temp = ''.join([X0, X1, X2, X3])
+        appli_sbox = segment_bits(temp, 4)
+        desappli_sbox = []
+        for i in range(32):
+            desappli_sbox.append(format(desapply_sbox(int(appli_sbox[i], 2), sboxes[j], i), '04b'))
+        # Xor with K iteration key to find B(j)
+        B = xor(''.join(desappli_sbox), K_i[j])
+        # Then, at the end of the for loop, we have B_0
+    return B
+
+
+cipher = '0111001000010001110011000100111010001010111000000110100000011000110101001001000111000111110011111010010010010001000100100011011111100100000011101001001100000110100011111101000101100010011100010011110001100110010000001101000110001010000000001101001110100001'
+
+C = segment_bits((cipher), 128)
 
 IPTable = [
     0, 32, 64, 96, 1, 33, 65, 97, 2, 34, 66, 98, 3, 35, 67, 99, 4, 36, 68, 100, 5, 37, 69, 101, 6, 38, 70, 102, 7, 39, 71, 103, 8, 40, 72, 104, 9, 41, 73, 105, 10, 42, 74, 106, 11, 43, 75, 107, 12, 44, 76, 108, 13, 45, 77, 109, 14, 46, 78, 110, 15, 47, 79, 111, 16, 48, 80, 112, 17, 49, 81, 113, 18, 50, 82, 114, 19, 51, 83, 115, 20, 52, 84, 116, 21, 53, 85, 117, 22, 54, 86, 118, 23, 55, 87, 119, 24, 56, 88, 120, 25, 57, 89, 121, 26, 58, 90, 122, 27, 59, 91, 123, 28, 60, 92, 124, 29, 61, 93, 125, 30, 62, 94, 126, 31, 63, 95, 127]
 FPTable = [
     0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81, 85, 89, 93, 97, 101, 105, 109, 113, 117, 121, 125, 2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62, 66, 70, 74, 78, 82, 86, 90, 94, 98, 102, 106, 110, 114, 118, 122, 126, 3, 7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127]
 
-K = "1111111111111010111111111011111111111100001111111111110111101111111111111111101111111111111110111111111111111111110001111111111111001111111111111111111111111101111111111100011111111111111111111111111111111111011111111111111111111111101111111111111111111110"
+K = "1001000111110000111110001111011101111001100110000110010010101101011011101000010001011010000011000010111000110010010101000100001111000111100001010100011101010101001001010001100111100101011000011100110100101101001011001101100111001010010010000100001001001110"
 K_i = K_i_gen(K)
 
 sboxes = calculate_sboxes()
 
-B_32 = permutation_initiale(IPTable, C)  #pk pb sur 1er bit inversé par rapport à b32 dans encryption
-print(B_32)
-res_xor = segment_bits(xor(B_32, K_i[31]), 4)
-desappli_sbox = []
-for i in range(32):
-        desappli_sbox.append(format(desapply_sbox(int(res_xor[i]), sboxes[31], i), '04b'))
-B_31 = xor(''.join(desappli_sbox), K_i[31])
-print(B_31)
-#inverse transfo linéaire
-B = B_31
-for j in range(30, 0, -1):
-    X0, X1, X2, X3 = segment_bits(B, 32)
-    X2 = format(rotate_right(int(X2, 2), 2, 32), '032b')
-    X0 = format(rotate_right(int(X0, 2), 5, 32), '032b')
-    X2 = xor(xor(X2, X3), format(right_gap(int(X1, 2), 7), '032b'))
-    X0 = xor(xor(X0, X1), X3)
-    X3 = format(rotate_right(int(X3, 2), 7, 32), '032b')
-    X1 = format(rotate_right(int(X1, 2), 1, 32), '032b')
-    X3 = xor(xor(X3, X2), format(right_gap(int(X0, 2), 3), '032b'))
-    X1 = xor(xor(X1, X0), X2)
-    X2 = format(rotate_right(int(X2, 2), 3, 32), '032b')
-    X0 = format(rotate_right(int(X0, 2), 3, 32), '032b')
-    temp = ''.join([X0, X1, X2, X3])
-    appli_sbox = segment_bits(temp, 4)
-    desappli_sbox = []
-    for i in range(32):
-        desappli_sbox.append(format(desapply_sbox(int(appli_sbox[i]), sboxes[j], i), '04b'))
-    B = xor(''.join(desappli_sbox), K_i[j])
-        
-print(B)
-M = permutation_finale(FPTable, B)
-print(bits_to_text(M))
-        
-        
-        
+M = []
+for i in range(len(C)):
+    B_32 = permutation_initiale(IPTable, C[i])
+    B_0 = inv_B_iterations(B_32, K_i) 
+    M.append(permutation_finale(FPTable, B_0))
+
+print("Le message déchiffré est:", bits_to_text(''.join(M)))
