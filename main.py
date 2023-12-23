@@ -1,12 +1,4 @@
-from async_message import *
-from crypt_decrypt import *
-from verify_certificate import *
-from sign_certificate import *
-from proof_knowledge import *
-from doc_chest import *
 from key_generator import *
-from send import *
-from receive import *
 from hash import *
 from datetime import datetime, timedelta
 import os
@@ -41,30 +33,32 @@ def menu(utilisateur):
         user_search="alice"
     elif utilisateur == "alice":
         user_search="bob"
-    print("Bonjour ô maître Rémi ! Que souhaitez-vous faire aujourd'hui ?")
-    print("->1<- Chiffrer / déchiffrer des messages.")
-    print("->2<- Créer un couple de clés publique / privée (générer un grand nombre premier).")
-    print("->3<- Signer / générer un certificat.")
-    print(f"->4<- Vérifier le certificat de {user_search}.")
-    print("->5<- Enregistrer un document dans le coffre-fort.")
-    print(f"->6<- Envoyer un message (asynchrone) à {user_search}.")
-    print(f"->7<- Demander une preuve de connaissance à {user_search}.")
-    print("->8<- Creer un block chain")
-    print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
-    print("->10<- Re afficher le menu")
-    print("->11<- Changer d'utilisateur")
-    print("->0<- Quitter")
-    
+    print("Mini PKI options")
+    print("->1<- Encrypt/decrypt message")
+    print("->2<- Generate public/private key")
+    print("->3<- Generate and sign a certificate")
+    print(f"->4<- Verifying {user_search}.")
+    print("->5<- Save a file in secured chest")
+    print(f"->6<- Send an asynchronous message to {user_search}.")
+    print(f"->7<- Ask for a proof of knoledge to {user_search}.")
+    print("->8<- Create block chain")
+    print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch")
+    print("->10<- Re load the menu")
+    print("->11<- change user")
+    print("->0<- Quit")
+
+# Function for menu choice
 def choix(): 
-    choix = input("Entrez le numéro de votre choix : ")
+    choix = input("Choose a valid number : ")
     return choix
 
+# Function for creating the tree and verifying its integrity every time an action occurs
 def verify_tree():
     directories = ['alice', 'bob', 'tier']
     directories_no = [directory for directory in directories if not os.path.exists(directory)]
     if directories_no:
-        reponse = input(f"L'architecture PKI n'existe pas voulez la créer? (O/N) ").lower()
-        if reponse =='o':
+        reponse = input(f"Infrastructure doesnt exist, do you want to create it ? (y/N) ").lower()
+        if reponse =='y':
             for directory in directories_no:
                 os.makedirs(directory)
             message = os.path.join("alice", "messages")   
@@ -84,17 +78,19 @@ def verify_tree():
             os.makedirs(certificates)
         else:
             exit()
-        print("Architecture PKI créée")
+        print("Infrastructure created")
     return True
 
+# Function to choose the user at the beginning
 def verify_user():
     while True:
-        reponse = input("Quel utilisateur êtes-vous ? Alice ou Bob ? \n>> ").lower()
+        reponse = input("Which user are you ? Alice or Bob ? \n>> ").lower()
         if reponse in ['alice', 'bob']:
             return reponse
         else:
-            print("Erreur : Choix invalide. Veuillez choisir entre Alice et Bob.")
+            print("Error : Invalid choice. Choose between Alice and Bob")
 
+# Function to verify if asymetrial keys exists
 def verify_keys_exist(user):
     key_filename = f"id_serp"
     public_key_filename = f"{key_filename}.pub"
@@ -104,41 +100,42 @@ def verify_keys_exist(user):
     else:
         return False
 
+# Function to take last asymetrical key generated for a given user on the trust tier keys file
 def search_user_in_pubkeyfile(user_search):
     filepath="tier/pub_keys_file"
     with open(filepath, 'r') as file:
         lignes = file.readlines()
-        # Parcourez les lignes à l'envers
         for ligne in reversed(lignes):
-            # Divisez la ligne en champs en utilisant le point-virgule comme délimiteur
             champs = ligne.strip().split(';')
             if champs[0].lower() == user_search.lower():
-                # Si c'est le cas, imprimez la ligne ou effectuez d'autres actions nécessaires
                 return ligne
         return False
-    
+
+# Regex for valid email
 def is_valid_email(email):
     email_pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     return re.match(email_pattern, email) is not None
 
-# Fonction pour valider la date de naissance
+# Regex for valid birth date
 def is_valid_birthdate(birthdate):
     birthdate_pattern = r'^\d{1,2}/\d{1,2}/\d{4}$'
     return re.match(birthdate_pattern, birthdate) is not None
 
+# Function to verify if certificate exists on tier and user side for a given user
 def check_generated_certificate(username):
     if os.path.exists(os.path.join(username, "serp.cert")) and os.path.exists(os.path.join("tier", "certificates", username + ".cert")):
         return True
     else:
         return False
     
+# Function to generate a cerificate given some personal information about the users
+    
 def generate_sign_certificate(mail, born, n , e, utilisateur):
-    print("Generation du certificat")
-    #Generation de la signature
+    print("Generating certificate")
     concat = utilisateur + mail + born + n + e
     sha1hash=sha1(concat)
     hash_int = int(sha1hash, 16)
-    #Chiffrement du hash avec la clé privé de l'autorité
+    # Encrypt concatenation with tier private key
     filepath="tier/id_serp"
     with open(filepath, 'r') as f:
         lignes = f.readlines()
@@ -146,11 +143,12 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
             n_tier = lignes[0].strip()
             d_tier = lignes[1].strip()
         else: 
-            print("Clés du tier de confiance non valides")
+            print("Tier keys are not valid")
     signature = encrypt_rsa(hash_int, int(n_tier), int(d_tier))
-    # print(hash_int, signature)
+    # Add an expiration date for certificate
     expiration = datetime.now() + timedelta(days=1)
     path = os.path.join(utilisateur, "serp.cert")
+    # Write everything in both files (user and tier)
     with open(path, 'w') as f:
         f.write("USER: " + utilisateur + "\n")
         f.write("MAIL ADDRESS: " + mail + "\n")
@@ -168,6 +166,7 @@ def generate_sign_certificate(mail, born, n , e, utilisateur):
         f.write("SIGNATURE: " + str(signature) + "\n")
         f.write("EXPIRATION DATE: " + str(expiration))
 
+# Function to verify if our own certificate is valid by comparing it with tier one
 def valid_own_certificate(utilisateur):
     if check_generated_certificate(utilisateur):
         path1 = os.path.join(utilisateur, "serp.cert")
@@ -176,6 +175,7 @@ def valid_own_certificate(utilisateur):
         with open(path1, 'rb') as f1, open(path2, 'rb') as f2:
             content1 = f1.read()
             content2 = f2.read()
+            # Verifying additional informations such as expiration date and public key compare
         with open(path1, 'r') as f: 
             lines = f.readlines()
             key_cert_n = int(lines[3].split(":")[1].replace(" ", "").split(",")[0])
@@ -206,11 +206,15 @@ def valid_own_certificate(utilisateur):
     else: 
         return False
 
+# Function to validate any user certificate by comparing the hashs (tier on is by decrypting with his public key, owner by taking its iformations and hashing it)
 def valid_user_certificate(utilisateur):
     if check_generated_certificate(utilisateur):
+        # Path 1 is user certificate on user dir
         path1 = os.path.join(utilisateur, "serp.cert")
         user_cert= utilisateur + ".cert"
+        # Path 2 is user certificate on tier dir
         path2 = os.path.join("tier", "certificates", user_cert )
+        # Path 3 is tier public key (used to decrypt)
         path3 = os.path.join("tier", "id_serp.pub")
         with open(path3, 'r') as f:
             lignes = f.readlines()
@@ -218,7 +222,8 @@ def valid_user_certificate(utilisateur):
                 n_tier = lignes[0].strip()
                 e_tier = lignes[1].strip()
             else: 
-                print("Clés du tier de confiance non valides")
+                print("Tier keys are not valid")
+        # Taking user informations, concatenate and hashs it
         with open(path1, 'rb') as f1, open(path2, 'rb') as f2:
             content1 = f1.readlines()
             user = content1[0].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", "")
@@ -226,17 +231,17 @@ def valid_user_certificate(utilisateur):
             born = content1[2].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", "")
             n = str(content1[3].decode('utf-8').split(":")[1].replace(" ", "").split(",")[0])
             e = str(content1[3].decode('utf-8').split(":")[1].replace(" ", "").split(",")[1])
-            #Calcule le hash de la concatenation et le convertit en strings
+            #Compute hash, convert into string
             concat = (user + mail + born + n + e).replace("\n", "")
             sha1_user=sha1(concat)
             sha1_user_int=int(sha1_user, 16)
-            # Recupere la date d'expiration dans le certificat récuperé avec le tier
+            # Get expiration date
             content2 = f2.readlines()    
             expiration_line = content2[5].decode('utf-8').split(":")[1:]
             expiration_str = ":".join(expiration_line).strip()
             expiration_date = datetime.strptime(expiration_str, "%Y-%m-%d %H:%M:%S.%f")
             date_now = datetime.now()
-            # Dechiffre la signature avec la clé publique du tier et la compare avec le hash calculé avant
+            # Decrypt signature and compare it with previous computed hash
             signature = int(content2[4].decode('utf-8').split(":")[1].replace(" ", "").replace("\n", ""))
             sh1sign_int=decrypt_rsa(signature, int(n_tier), int(e_tier) )
         if sh1sign_int == sha1_user_int:
@@ -249,60 +254,65 @@ def valid_user_certificate(utilisateur):
     else: 
         return False, "file"
 
+# Main function for user choices and basic algorithms*
 def main():
+    # Verifying basic informations at each loops
     verify_tree()
     utilisateur = verify_user()
     afficher_serpent()
     menu(utilisateur)
     check_generated_certificate(utilisateur)
     while True:  
+        # Printing verified infos
         print(f"\nUser: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
         if verify_tree():
             print(f"Architecture:[{Fore.GREEN}V{Style.RESET_ALL}]")
         else: 
             verify_tree()
         if verify_keys_exist(utilisateur):
-            print(f"Clés asymetriques: [{Fore.GREEN}V{Style.RESET_ALL}]")
+            print(f"Asymetrical keys: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else:
-            print(f"Clés asymetriques: [{Fore.RED}X{Style.RESET_ALL}]")
+            print(f"Asymetrical keys: [{Fore.RED}X{Style.RESET_ALL}]")
         if check_generated_certificate(utilisateur):
-            print(f"Certificat généré: [{Fore.GREEN}V{Style.RESET_ALL}]")
+            print(f"Asymetrical keys: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else: 
-            print(f"Certificat généré: [{Fore.RED}X{Style.RESET_ALL}]")
+            print(f"Certificate generated: [{Fore.RED}X{Style.RESET_ALL}]")
         if valid_own_certificate(utilisateur):
-            print(f"Certificat utilisateur valide: [{Fore.GREEN}V{Style.RESET_ALL}]")
+            print(f"Valid user certificate: [{Fore.GREEN}V{Style.RESET_ALL}]")
         else: 
-            print(f"Certificat utilisateur valide: [{Fore.RED}X{Style.RESET_ALL}]")
+            print(f"Valid user certificate: [{Fore.RED}X{Style.RESET_ALL}]")
         choice_user = choix()
         match choice_user:
             case '1':
-                print("Quel message voulez-vous chiffrer/déchiffrer ?")
+                print("Which message do you want to encrypt ?")
                 #crypt() -> demande dans cette fonction ce que l'on veux chiffrer dechiffrer et affiche le message
             case '2':
-                print("Début du processus de création d'un couple de clés publique / privée...")
+                # generating asymetrical keys and sending it to user repo and tier repo
+                print("Creating public and private keys ...")
                 n, e, d = generate_asymetrical(512)
                 user_directory = utilisateur
     
-                # Créer le fichier pour la clé privée
+                # Creating the file for private
                 private_key_file = os.path.join(user_directory, 'id_serp')
                 with open(private_key_file, 'w') as f:
                     f.write('\n'.join([str(n), str(d)]))
-                # Créer le fichier pour la clé publique
+                # Creating the file for public
                 public_key_file = os.path.join(user_directory, 'id_serp.pub')
                 with open(public_key_file, 'w') as f:
                     f.write('\n'.join([str(n), str(e)]))
-                print(f"Clés générées et enregistrées pour {utilisateur}.")
-                # Envoyer la clé publique au tier de confiance 
-                print("Envoie de la clé publique au tier de confiance")
+                print(f"Generated and saved keys for {utilisateur}.")
+                # Sending the key to tier file
+                print("Sending keys to trust tier")
                 with open("tier/pub_keys_file", 'a') as f:
                     f.write(';'.join([utilisateur,str(n), str(e)])+"\n")
             case '3':
+                # Verifying infos and asking for mail and birth date before creating the certificate
                 if verify_keys_exist(utilisateur):
                     if os.path.exists("tier/id_serp"): 
                         while True: 
-                            mail= input("Veuillez renseigner votre adresse email, 0 pour annuler\n")
+                            mail= input("Enter your email adress, 0 to quit\n")
                             if is_valid_email(mail):
-                                born= input("Veuillez renseigner votre date de naissance sous la forme JJ/MM/AAAA, 0 pour annuler\n")
+                                born= input("Enter your birth date under the form DD/MM/YYYY, 0 to quit\n")
                                 if is_valid_birthdate(born):
                                     lignes= search_user_in_pubkeyfile(utilisateur)
                                     n=(lignes.strip().split(';')[1])
@@ -312,77 +322,79 @@ def main():
                                 elif born =="0":
                                     break
                                 else: 
-                                    print(f"{Fore.RED}Date de naissance invalide. Veuillez saisir une date de naissance valide au format JJ/MM/AAAA.{Style.RESET_ALL}")
+                                    print(f"{Fore.RED}Invalid birth date. Enter your birth date under the form DD/MM/YYYY.{Style.RESET_ALL}")
                             elif mail =="0":
                                 break
                             else:
-                                print(f"{Fore.RED}Adresse e-mail invalide. Veuillez saisir une adresse e-mail valide.{Style.RESET_ALL}")
+                                print(f"{Fore.RED}Invalid email. Enter a valid email address.{Style.RESET_ALL}")
                     else: 
-                        print("Le tier de confiance n'a pas de clé privé pour signer")
+                        print("Trust tier doesnt have private key to sign")
                 else: 
-                    print("Il vous faut un couple de clé asymetrique afin de génerer/signer un certificat")
+                    print("You need a public/private keys to generate the certificate")
             case '4':
+                # User the we are verifying is always the other as our own user
                 if utilisateur == "bob":
                     user_search="alice"
                 elif utilisateur == "alice":
                     user_search="bob" 
-                print(f"Verification de certificat de {user_search}")
+                print(f"Certificate verification for {user_search}")
+                # Just using the function to verify and printing it
                 result, reason = valid_user_certificate(user_search)
                 if result: 
-                    print(f"{Fore.GREEN}Certificat de {user_search} valide{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}Certificate of {user_search} valid{Style.RESET_ALL}")
                 else: 
                     if reason == "sign":
-                        print(f"{Fore.RED}Certificat de {user_search} invalide, signature invalide{Style.RESET_ALL}")
+                        print(f"{Fore.RED}Certificate of {user_search} invalid, invalid signature{Style.RESET_ALL}")
                     elif reason == "file":
-                        print(f"{Fore.RED}Certificat de {user_search} invalide, certificat innexistant{Style.RESET_ALL}")
+                        print(f"{Fore.RED}Certificate of {user_search} invalid, certificate doesnt exist{Style.RESET_ALL}")
                     elif reason == "exp":
-                        print(f"{Fore.RED}Certificat de {user_search} invalide, certificat expiré{Style.RESET_ALL}")
+                        print(f"{Fore.RED}Certificate of {user_search} invalid, expired certificate{Style.RESET_ALL}")
             case '5':
-                #case si on a pas de documents
-                print("Quel document voulez-vous enregistrer dans le coffre-fort ?")
+                print("Which file do you want to save into secured chest ?")
             case '6':
+                # Switching there also to send to other user
                 if utilisateur == "bob":
                     user_search="alice"
                 elif utilisateur == "alice":
                     user_search="bob" 
+                # Using the function to verify both sending and receiving keys
                 if search_user_in_pubkeyfile(user_search):
-                    print("Generation de la clé secrete")
+                    # Generating secret key
+                    print("Generating secret key")
                     sym_key = generate_serpent_key()
                     message = os.path.join(utilisateur, "sym_key") 
                     with open(message, 'w') as f:
                         f.write(sym_key)
-                    # print(sym_key)
-                    print("Chiffrement de la clé secrete avec la clés public")
+                    print("Envrypting secret key with public key")
                     sym_key_int = int("".join(map(str, sym_key)), 2)
                     lignes= search_user_in_pubkeyfile(user_search)
-                    # print(lignes)
                     n=int(lignes.strip().split(';')[1])
                     e=int(lignes.strip().split(';')[2])
-                    # print("Clé publique: " + str(n) + ";" + str(e))
                     cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
-                    # print("Clé symétrique chiffrée :", cle_symetrique_chiffree)
-                    plain_text=input("Quel message souhaitez-vous envoyer ?\n") 
+                    plain_text=input("Which message to you want to send ?\n") 
                     if utilisateur == "bob":
                         crypt_key = os.path.join("alice", "messages") 
                     elif utilisateur == "alice":
                         crypt_key = os.path.join("bob", "messages") 
+                    print("Sending secret key and encrypted message")
                     with open(crypt_key, 'a') as f:
                         sym_key = str(cle_symetrique_chiffree) + "," + plain_text +  "\n"
                         f.write(sym_key)
-                    print("Envoie de la clé secrete et du message chifré")
                 else:
-                    print(f"Les 2 utilisateurs n'ont pas crées de clés asymetriques")                  
+                    print(f"One or both users dont have asymetrical keys")                  
             case '7':
-                print("Demande de preuve de connaissance")
+                print("Asking for proof of knoledge")
+                # Getting public tier key
                 filepath="tier/id_serp.pub"
                 with open(filepath, 'r') as f:
                     lignes = f.readlines()
                     if len(lignes) >= 2:
                         n_tier = lignes[0].strip()
                         e_tier = lignes[1].strip()
+                # Choosing the message we want to send to verify (random) and encrypt it with public key
                 proof_init = random.randint( 0, 65537 )
                 private=encrypt_rsa(proof_init, int(n_tier), int(e_tier))
-                # On est censé ici envoyer la preuve chiffré a l'entité
+                # In real life we would send it to tier and he would to the following lines
                 filepath="tier/id_serp"
                 with open(filepath, 'r') as f:
                     lignes = f.readlines()
@@ -390,31 +402,27 @@ def main():
                         n_tier = lignes[0].strip()
                         d_tier = lignes[1].strip()
                 decrypted_proof=decrypt_rsa(private, int(n_tier), int(d_tier))
+                # We now compare both results and see if they are the same
                 if proof_init == decrypted_proof: 
-                    print(f"{Fore.GREEN}Preuve verifié{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}Verified proof{Style.RESET_ALL}")
                 else: 
-                    print(f"{Fore.RED}Preuve invalide{Style.RESET_ALL}")
+                    print(f"{Fore.RED}Invalid proof{Style.RESET_ALL}")
             case '8':
                 print("Bloc chain")
             case '9':
                 print("Seccom from scratch")
-                #creation de clés
-                #envoie de la clés secrète
-                #création certificat 
-                #message asynchrone 
-                #verification et signature certificat
             case '10': 
-                menu()
+                menu(utilisateur)
             case '11': 
                 utilisateur = verify_user()
                 print(f"User: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
                 print("Au revoir !")
-                exit()  # Quitte le programme si l'utilisateur choisit 0
+                exit()  # Quit the program if user enter specific fields
             case _:
-                print("Choix non valide. Veuillez entrer un numéro valide.")
+                print("Non valid choice. Enter a valid number.")
         
-        input("\n\nAppuyez sur Enter pour continuer...\n\n")
+        input("\n\nPress Enter...\n\n")
 
 if __name__ == "__main__":
     main()
