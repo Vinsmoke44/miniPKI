@@ -1,5 +1,7 @@
 from key_generator import *
 from hash import *
+from encryption import *
+from decryption import *
 from datetime import datetime, timedelta
 import os
 import re
@@ -23,9 +25,7 @@ def afficher_serpent():
          (      (        _-~    _--_    ~-_     _/   |
           \      ~-____-~    _-~    ~-_    ~-_-~    /
             ~-_           _-~          ~-_       _-~
-               ~--______-~                ~-___-~
-
-                       """
+               ~--______-~                ~-___-~   """
     print(serpent)
 
 def menu(utilisateur):
@@ -34,18 +34,18 @@ def menu(utilisateur):
     elif utilisateur == "alice":
         user_search="bob"
     print("Mini PKI options")
-    print("->1<- Encrypt/decrypt message")
-    print("->2<- Generate public/private key")
-    print("->3<- Generate and sign a certificate")
+    print("->1<- Encrypt / decrypt message.")
+    print("->2<- Generate public / private key.")
+    print("->3<- Generate and sign a certificate.")
     print(f"->4<- Verifying {user_search}.")
-    print("->5<- Save a file in secured chest")
+    print("->5<- Save a file in the secured chest.")
     print(f"->6<- Send an asynchronous message to {user_search}.")
-    print(f"->7<- Ask for a proof of knoledge to {user_search}.")
-    print("->8<- Create block chain")
-    print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch")
-    print("->10<- Re load the menu")
-    print("->11<- change user")
-    print("->0<- Quit")
+    print(f"->7<- Ask for a knowledge proof to {user_search}.")
+    print("->8<- Create blockchain.")
+    print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
+    print("->10<- Reload the menu.")
+    print("->11<- Change user.")
+    print("->0<- Quit.")
 
 # Function for menu choice
 def choix(): 
@@ -284,7 +284,23 @@ def main():
         choice_user = choix()
         match choice_user:
             case '1':
-                print("Which message do you want to encrypt ?")
+                print("Do you want to encrypt or decrypt a message ?")
+                print("->1<- Encrypt a message.")
+                print("->2<- Decrypt a message.")
+                choice = choix()
+                match choice:
+                    case '1':
+                        message = input("Enter the message you want to encrypt :")
+                        key = input('Enter the symetrical key :')
+                        encrypt(message, key)
+
+                    case '2':
+                        cypher = input("Enter the encrypted message you want to decrypt :")
+                        key = input('Enter the symetrical key :')
+                        decrypt(cypher, key)
+                    case _:
+                        print("Non valid choice. Enter a valid number.")
+
                 #crypt() -> demande dans cette fonction ce que l'on veux chiffrer dechiffrer et affiche le message
             case '2':
                 # generating asymetrical keys and sending it to user repo and tier repo
