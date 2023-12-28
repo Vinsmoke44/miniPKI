@@ -37,7 +37,7 @@ def menu(utilisateur):
     print("->1<- Encrypt / decrypt message.")
     print("->2<- Generate public / private key.")
     print("->3<- Generate and sign a certificate.")
-    print(f"->4<- Verifying {user_search}.")
+    print(f"->4<- Verifying {user_search} certificate.")
     print("->5<- Save a file in the secured chest.")
     print(f"->6<- Send an asynchronous message to {user_search}.")
     print(f"->7<- Ask for a knowledge proof to {user_search}.")
@@ -45,6 +45,8 @@ def menu(utilisateur):
     print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
     print("->10<- Reload the menu.")
     print("->11<- Change user.")
+    print("->12<- Decrypt all messages from message file.")
+    print("->13<- Clear message box.")
     print("->0<- Quit.")
 
 # Function for menu choice
@@ -287,24 +289,30 @@ def main():
                 print("Do you want to encrypt or decrypt a message ?")
                 print("->1<- Encrypt a message.")
                 print("->2<- Decrypt a message.")
+                print("->3<- Generate a symetrical key.")
                 choice = choix()
                 match choice:
                     case '1':
                         message = input("Enter the message you want to encrypt :")
                         key = input('Enter the symetrical key :')
-                        encrypt(message, key)
+                        encrypted_message = encrypt(message, key)
+                        print("Message chiffré: ", encrypted_message)
 
                     case '2':
                         cypher = input("Enter the encrypted message you want to decrypt :")
                         key = input('Enter the symetrical key :')
-                        decrypt(cypher, key)
+                        decrypted_message = decrypt(cypher, key)
+                        print("Message dechiffré: ", decrypted_message)
+                    case '3':
+                        sym_key = generate_serpent_key()
+                        print("Symetrical key: ", sym_key)
                     case _:
                         print("Non valid choice. Enter a valid number.")
 
                 #crypt() -> demande dans cette fonction ce que l'on veux chiffrer dechiffrer et affiche le message
             case '2':
                 # generating asymetrical keys and sending it to user repo and tier repo
-                print("Creating public and private keys ...")
+                print(f"{Fore.RED}Creating public and private keys ...{Style.RESET_ALL}")
                 n, e, d = generate_asymetrical(512)
                 user_directory = utilisateur
     
@@ -316,9 +324,9 @@ def main():
                 public_key_file = os.path.join(user_directory, 'id_serp.pub')
                 with open(public_key_file, 'w') as f:
                     f.write('\n'.join([str(n), str(e)]))
-                print(f"Generated and saved keys for {utilisateur}.")
+                print(f"{Fore.RED}Generated and saved keys for {utilisateur}{Style.RESET_ALL}.")
                 # Sending the key to tier file
-                print("Sending keys to trust tier")
+                print(f"{Fore.RED}Sending keys to trust tier{Style.RESET_ALL}")
                 with open("tier/pub_keys_file", 'a') as f:
                     f.write(';'.join([utilisateur,str(n), str(e)])+"\n")
             case '3':
@@ -381,20 +389,23 @@ def main():
                     message = os.path.join(utilisateur, "sym_key") 
                     with open(message, 'w') as f:
                         f.write(sym_key)
-                    print("Envrypting secret key with public key")
+                    print("Encrypting secret key with public key")
                     sym_key_int = int("".join(map(str, sym_key)), 2)
                     lignes= search_user_in_pubkeyfile(user_search)
                     n=int(lignes.strip().split(';')[1])
                     e=int(lignes.strip().split(';')[2])
                     cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
-                    plain_text=input("Which message to you want to send ?\n") 
+                    plain_text=input("Which message to you want to send ?\n")
+                    print(f"{Fore.RED}Ecrypting message with symetrical key{Style.RESET_ALL}") 
+                    encrypted_message = encrypt(plain_text, sym_key)
                     if utilisateur == "bob":
                         crypt_key = os.path.join("alice", "messages") 
                     elif utilisateur == "alice":
                         crypt_key = os.path.join("bob", "messages") 
-                    print("Sending secret key and encrypted message")
+                    print(f"{Fore.RED}Sending secret key and encrypted message{Style.RESET_ALL}")
+                    date_now = datetime.now()
                     with open(crypt_key, 'a') as f:
-                        sym_key = str(cle_symetrique_chiffree) + "," + plain_text +  "\n"
+                        sym_key = str(cle_symetrique_chiffree) + "," + encrypted_message + "," + str(date_now) + "," + utilisateur + "\n"
                         f.write(sym_key)
                 else:
                     print(f"One or both users dont have asymetrical keys")                  
@@ -432,6 +443,41 @@ def main():
             case '11': 
                 utilisateur = verify_user()
                 print(f"User: {Fore.BLUE}{utilisateur}{Style.RESET_ALL}")
+            case '12':
+                print("\n")
+                #Reading private key
+                path=os.path.join(utilisateur, "id_serp" )
+                with open(path, 'r') as f:
+                    lignes = f.readlines()
+                    if len(lignes) >= 2:
+                        n = lignes[0].strip()
+                        d = lignes[1].strip()
+                #Reading message file line by line
+                pathmess = os.path.join(utilisateur, "messages" )
+                with open(pathmess, 'r') as f: 
+                    linesmess = f.readlines()
+                if len(linesmess) > 0: 
+                    for ligne in linesmess:
+                        champs = ligne.strip().split(',')
+                        encrypted_sym_key = champs[0] 
+                        encrypted_message = champs[1]
+                        date=champs[2]
+                        user=champs[3]
+                        int_sym_key=decrypt_rsa(int(encrypted_sym_key), int(n), int(d) )
+                        bin_sym_key=bin(int_sym_key)
+                        sym_key=bin_sym_key.replace("0b", "")
+                        decrypted_message = decrypt(encrypted_message, sym_key)
+                        print(f"{Fore.BLUE}Message received from {user} at date {date} {Style.RESET_ALL}:")
+                        print(decrypted_message + "\n")
+                else: 
+                    print("You dont have any message :(")
+            case '13':
+                delete = input("Do you really want to delete all messages, you wont be able to retreive them after y/N\n").lower()
+                if delete == "y":
+                    print("clearing message file...")
+                    pathmess = os.path.join(utilisateur, "messages" )
+                    with open(pathmess, 'w') as f:
+                        f.write("")
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
                 print("Au revoir !")
                 exit()  # Quit the program if user enter specific fields

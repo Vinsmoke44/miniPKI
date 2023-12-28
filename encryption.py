@@ -192,5 +192,5 @@ def encrypt(message, K):
         B_32 = B_iterations(B_0, K_i)
         
         C.append(permutation_finale(FPTable, B_32))
-
-    print("Le message chiffré est :", ''.join(C))
+    return ''.join(C)
+    # print("Le message chiffré est :", ''.join(C))

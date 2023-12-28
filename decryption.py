@@ -188,5 +188,5 @@ def decrypt(cipher, K):
         B_32 = permutation_initiale(IPTable, C[i])
         B_0 = inv_B_iterations(B_32, K_i) 
         M.append(permutation_finale(FPTable, B_0))
-
-    print("Le message déchiffré est:", bits_to_text(''.join(M)))
+    return bits_to_text(''.join(M))
+    # print("Le message déchiffré est:", bits_to_text(''.join(M)))
