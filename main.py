@@ -304,7 +304,7 @@ def main():
                         key = input('Enter the symetrical key :')
                         if len(cypher) != 256 or not all(bit in '01' for bit in cypher):
                             print("The encrypted message should be a binary string of length 256.")
-                        if len(key) != 256 or not all(bit in '01' for bit in key):
+                        elif len(key) != 256 or not all(bit in '01' for bit in key):
                             print("The key should be a binary string of length 256.")
                         else:
                             decrypted_message = decrypt(cypher, key)
