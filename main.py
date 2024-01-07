@@ -37,7 +37,7 @@ def menu(user):
     print("->3<- Generate and sign a certificate.")
     print(f"->4<- Verifying {other_user} certificate.")
     print(f"->5<- Send an asynchronous message to {other_user}.")
-    print(f"->6<- Ask for a knowledge proof to {other_user}.")
+    print(f"->6<- Ask for a knowledge proof.")
     print("->7<- Decrypt all messages from message file.")
     print("->8<- Clear message box.")
     print("->9<- Change user.")
@@ -413,7 +413,7 @@ def main():
                         n_tier = lignes[0].strip()
                         e_tier = lignes[1].strip()
                 # Choosing the message we want to send to verify (random) and encrypt it with public key
-                proof_init = random.randint( 0, 65537 )
+                proof_init = random.randint( 0, 10**20 )
                 private=encrypt_rsa(proof_init, int(n_tier), int(e_tier))
                 # In real life we would send it to tier and he would to the following lines
                 filepath="tier/id_serp"

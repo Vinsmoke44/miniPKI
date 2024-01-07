@@ -1,6 +1,6 @@
 # Mini PKI environment
 
-This school project has the aim to recreate a PKI environment enabling the user to send secured messges via serpent encryption 
+This school project has the aim to recreate a PKI environment enabling the user to send secured messages via serpent encryption 
 
 ## Modes 
 
@@ -16,7 +16,7 @@ The project let you choose between different modes :
 
     ->5<- Send an asynchronous message to user.
 
-    ->6<- Ask for a knowledge proof to user.
+    ->6<- Ask for a knowledge proof.
 
     ->7<- Decrypt all messages from message file.
 
@@ -36,4 +36,4 @@ To run the project, clone it and run :
  python3 main.py
 ```
 
-Since everything is made from scratch, no librairy is necessary !
+Since everything is made from scratch, no library is necessary !
