@@ -30,8 +30,8 @@ def print_serpent():
     print(serpent)
 
 def menu(user):
-    other_user = "Alice" if user == "bob" else "Bob"
-    print("Mini PKI options")
+    other_user = "alice" if user == "bob" else "bob"
+    print("Mini PaI options")
     print("->1<- Encrypt / decrypt message.")
     print("->2<- Generate public / private key.")
     print("->3<- Generate and sign a certificate.")
@@ -243,7 +243,10 @@ def valid_user_certificate(utilisateur):
             sh1sign_int=decrypt_rsa(signature, int(n_tier), int(e_tier) )
         if sh1sign_int == sha1_user_int:
             if date_now < expiration_date:
+                if valid_own_certificate(utilisateur):
                     return True, "ok"
+                else: 
+                    return False, "sync"
             else: 
                 return False, "exp"
         else: 
@@ -359,7 +362,7 @@ def main():
                     print("You need public/private keys to generate the certificate.")
             case '4':
                 # User the we are verifying is always the other as our own user
-                other_user = "Alice" if user == "bob" else "Bob"
+                other_user = "alice" if user == "bob" else "bob"
                 print(f"Certificate verification for {other_user}.")
                 # Just using the function to verify and printing it
                 result, reason = valid_user_certificate(other_user)
@@ -372,9 +375,11 @@ def main():
                         print(f"{Fore.RED}Certificate of {other_user} invalid, certificate doesn't exist{Style.RESET_ALL}.")
                     elif reason == "exp":
                         print(f"{Fore.RED}Certificate of {other_user} invalid, expired certificate{Style.RESET_ALL}.")
+                    elif reason == "sync":
+                        print(f"{Fore.RED}Certificate of {other_user} invalid, lost synchronysation between user and tier{Style.RESET_ALL}.")
             case '5':
                 # Switching there also to send to other user
-                other_user = "Alice" if user == "bob" else "Bob"
+                other_user = "alice" if user == "bob" else "bob"
                 # Using the function to verify both sending and receiving keys
                 if search_user_in_pubkeyfile(other_user):
                     # Generating secret key
