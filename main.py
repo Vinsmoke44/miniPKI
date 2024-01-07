@@ -36,15 +36,12 @@ def menu(user):
     print("->2<- Generate public / private key.")
     print("->3<- Generate and sign a certificate.")
     print(f"->4<- Verifying {other_user} certificate.")
-    print("->5<- Save a file in the secured chest.")
-    print(f"->6<- Send an asynchronous message to {other_user}.")
-    print(f"->7<- Ask for a knowledge proof to {other_user}.")
-    print("->8<- Create blockchain.")
-    print("->9<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch?.")
+    print(f"->5<- Send an asynchronous message to {other_user}.")
+    print(f"->6<- Ask for a knowledge proof to {other_user}.")
+    print("->7<- Decrypt all messages from message file.")
+    print("->8<- Clear message box.")
+    print("->9<- Change user.")
     print("->10<- Reload the menu.")
-    print("->11<- Change user.")
-    print("->12<- Decrypt all messages from message file.")
-    print("->13<- Clear message box.")
     print("->0<- Quit.")
 
 # Function for menu choice
@@ -376,8 +373,6 @@ def main():
                     elif reason == "exp":
                         print(f"{Fore.RED}Certificate of {other_user} invalid, expired certificate{Style.RESET_ALL}.")
             case '5':
-                print("Which file do you want to save into the secured chest ?")
-            case '6':
                 # Switching there also to send to other user
                 other_user = "Alice" if user == "bob" else "Bob"
                 # Using the function to verify both sending and receiving keys
@@ -408,7 +403,7 @@ def main():
                         f.write(sym_key)
                 else:
                     print(f"One or both users don't have asymetrical keys.")                  
-            case '7':
+            case '6':
                 print("Asking for proof of knowledge...")
                 # Getting public tier key
                 filepath="tier/id_serp.pub"
@@ -433,16 +428,7 @@ def main():
                     print(f"{Fore.GREEN}Verified proof{Style.RESET_ALL}.")
                 else: 
                     print(f"{Fore.RED}Invalid proof{Style.RESET_ALL}.")
-            case '8':
-                print("Blockchain")
-            case '9':
-                print("Seccom from scratch")
-            case '10': 
-                menu(user)
-            case '11': 
-                user = verify_user()
-                print(f"User: {Fore.BLUE}{user}{Style.RESET_ALL}")
-            case '12':
+            case '7':
                 print("\n")
                 # Reading private key
                 path=os.path.join(user, "id_serp" )
@@ -470,13 +456,18 @@ def main():
                         print(decrypted_message + "\n")
                 else: 
                     print("You dont have any message :(")
-            case '13':
+            case '8':
                 delete = input("Do you really want to delete all messages, you wont be able to retreive them after : y/N\n").lower()
                 if delete == "y":
                     print("clearing message file...")
                     pathmess = os.path.join(user, "messages" )
                     with open(pathmess, 'w') as f:
                         f.write("")
+            case '9': 
+                user = verify_user()
+                print(f"User: {Fore.BLUE}{user}{Style.RESET_ALL}")
+            case '10': 
+                menu(user)
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
                 print("Au revoir !")
                 exit()  # Quit the program if user enter specific fields

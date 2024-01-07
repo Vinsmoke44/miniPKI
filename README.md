@@ -6,21 +6,27 @@ This school project has the aim to recreate a PKI environment enabling the user 
 
 The project let you choose between different modes :
 
-->1<- Crypt / decrypt messages.
+    ->1<- Encrypt / decrypt message.
 
-->2<- Create a couple of private/public key.
+    ->2<- Generate public / private key.
 
-->3<- Sign a certificate.
+    ->3<- Generate and sign a certificate.
 
-->4<- Verify a certificate.
+    ->4<- Verifying user certificate.
 
-->5<- Save a document in a safe.
+    ->5<- Send an asynchronous message to user.
 
-->6<- Send an asynchronous message.
+    ->6<- Ask for a knowledge proof to user.
 
-->7<- Ask for a proof of identity.
+    ->7<- Decrypt all messages from message file.
 
-->0<- I WANT IT ALL !! I WANT IT NOW !! SecCom from scratch.
+    ->8<- Clear message box.
+
+    ->9<- Change user.
+
+    ->10<- Reload the menu.
+
+    ->0<- Quit.
 
 ## Run the project 
 
@@ -30,4 +36,4 @@ To run the project, clone it and run :
  python3 main.py
 ```
 
-Since everything is made from scratch, no librairy is necessary.
+Since everything is made from scratch, no librairy is necessary !
