@@ -31,7 +31,7 @@ def print_serpent():
 
 def menu(user):
     other_user = "alice" if user == "bob" else "bob"
-    print("Mini PaI options")
+    print("Mini PKI options")
     print("->1<- Encrypt / decrypt message.")
     print("->2<- Generate public / private key.")
     print("->3<- Generate and sign a certificate.")
@@ -71,6 +71,9 @@ def verify_tree():
             message = os.path.join("tier", "id_serp.pub")  
             with open(message, 'w') as f:
                 f.write('\n'.join([str(n), str(e)]))
+            pub_key_file =  os.path.join("tier", "pub_keys_file")
+            with open(pub_key_file, 'w') as f:
+                pass
             certificates = os.path.join("tier", "certificates")  
             os.makedirs(certificates)
         else:
@@ -262,6 +265,8 @@ def main():
     print_serpent()
     menu(user)
     check_generated_certificate(user)
+    certif = False
+
     while True:  
         # Printing verified infos
         print(f"\nUser: {Fore.BLUE}{user}{Style.RESET_ALL}")
@@ -302,9 +307,7 @@ def main():
                     case '2':
                         cypher = input("Enter the encrypted message you want to decrypt :")
                         key = input('Enter the symetrical key :')
-                        if len(cypher) != 256 or not all(bit in '01' for bit in cypher):
-                            print("The encrypted message should be a binary string of length 256.")
-                        elif len(key) != 256 or not all(bit in '01' for bit in key):
+                        if len(key) != 256 or not all(bit in '01' for bit in key):
                             print("The key should be a binary string of length 256.")
                         else:
                             decrypted_message = decrypt(cypher, key)
@@ -357,9 +360,9 @@ def main():
                             else:
                                 print(f"{Fore.RED}Invalid email. Enter a valid email address.{Style.RESET_ALL}")
                     else: 
-                        print("Trust tier does not have private key to sign")
+                        print(f"{Fore.RED}Trust tier does not have private key to sign{Style.RESET_ALL}")
                 else: 
-                    print("You need public/private keys to generate the certificate.")
+                    print(f"{Fore.RED}You need public/private keys to generate the certificate.{Style.RESET_ALL}")
             case '4':
                 # User the we are verifying is always the other as our own user
                 other_user = "alice" if user == "bob" else "bob"
@@ -368,6 +371,7 @@ def main():
                 result, reason = valid_user_certificate(other_user)
                 if result: 
                     print(f"{Fore.GREEN}Certificate of {other_user} valid{Style.RESET_ALL}.")
+                    certif = True
                 else: 
                     if reason == "sign":
                         print(f"{Fore.RED}Certificate of {other_user} invalid, invalid signature{Style.RESET_ALL}.")
@@ -382,32 +386,35 @@ def main():
                 other_user = "alice" if user == "bob" else "bob"
                 # Using the function to verify both sending and receiving keys
                 if search_user_in_pubkeyfile(other_user):
-                    # Generating secret key
-                    print("Generating secret key...")
-                    sym_key = generate_serpent_key()
-                    message = os.path.join(user, "sym_key") 
-                    with open(message, 'w') as f:
-                        f.write(sym_key)
-                    print("Encrypting secret key with public key.")
-                    sym_key_int = int("".join(map(str, sym_key)), 2)
-                    lignes= search_user_in_pubkeyfile(other_user)
-                    n=int(lignes.strip().split(';')[1])
-                    e=int(lignes.strip().split(';')[2])
-                    cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
-                    plain_text=input("Which message to you want to send ?\n")
-                    print(f"{Fore.RED}Encrypting message with symetrical key{Style.RESET_ALL}.") 
-                    encrypted_message = encrypt(plain_text, sym_key)
-                    if user == "bob":
-                        crypt_key = os.path.join("alice", "messages") 
-                    elif user == "alice":
-                        crypt_key = os.path.join("bob", "messages") 
-                    print(f"{Fore.RED}Sending secret key and encrypted message{Style.RESET_ALL}...")
-                    date_now = datetime.now()
-                    with open(crypt_key, 'a') as f:
-                        sym_key = str(cle_symetrique_chiffree) + "," + encrypted_message + "," + str(date_now) + "," + user + "\n"
-                        f.write(sym_key)
+                    if certif: 
+                        # Generating secret key
+                        print("Generating secret key...")
+                        sym_key = generate_serpent_key()
+                        message = os.path.join(user, "sym_key") 
+                        with open(message, 'w') as f:
+                            f.write(sym_key)
+                        print("Encrypting secret key with public key.")
+                        sym_key_int = int("".join(map(str, sym_key)), 2)
+                        lignes= search_user_in_pubkeyfile(other_user)
+                        n=int(lignes.strip().split(';')[1])
+                        e=int(lignes.strip().split(';')[2])
+                        cle_symetrique_chiffree = encrypt_rsa(sym_key_int, n, e)
+                        plain_text=input("Which message to you want to send ?\n")
+                        print(f"{Fore.RED}Encrypting message with symetrical key{Style.RESET_ALL}.") 
+                        encrypted_message = encrypt(plain_text, sym_key)
+                        if user == "bob":
+                            crypt_key = os.path.join("alice", "messages") 
+                        elif user == "alice":
+                            crypt_key = os.path.join("bob", "messages") 
+                        print(f"{Fore.RED}Sending secret key and encrypted message{Style.RESET_ALL}...")
+                        date_now = datetime.now()
+                        with open(crypt_key, 'a') as f:
+                            sym_key = str(cle_symetrique_chiffree) + "," + encrypted_message + "," + str(date_now) + "," + user + "\n"
+                            f.write(sym_key)
+                    else: 
+                        print(f"\n{Fore.RED}Certificate is not verified{Style.RESET_ALL}")
                 else:
-                    print(f"One or both users don't have asymetrical keys.")                  
+                    print(f"{Fore.RED}One or both users don't have asymetrical keys.{Style.RESET_ALL}")                  
             case '6':
                 print("Asking for proof of knowledge...")
                 # Getting public tier key
@@ -434,33 +441,36 @@ def main():
                 else: 
                     print(f"{Fore.RED}Invalid proof{Style.RESET_ALL}.")
             case '7':
-                print("\n")
-                # Reading private key
-                path=os.path.join(user, "id_serp" )
-                with open(path, 'r') as f:
-                    lignes = f.readlines()
-                    if len(lignes) >= 2:
-                        n = lignes[0].strip()
-                        d = lignes[1].strip()
-                # Reading message file line by line
-                pathmess = os.path.join(user, "messages" )
-                with open(pathmess, 'r') as f: 
-                    linesmess = f.readlines()
-                if len(linesmess) > 0: 
-                    for ligne in linesmess:
-                        champs = ligne.strip().split(',')
-                        encrypted_sym_key = champs[0] 
-                        encrypted_message = champs[1]
-                        date=champs[2]
-                        other_user=champs[3]
-                        int_sym_key=decrypt_rsa(int(encrypted_sym_key), int(n), int(d) )
-                        bin_sym_key=bin(int_sym_key)
-                        sym_key=bin_sym_key.replace("0b", "")
-                        decrypted_message = decrypt(encrypted_message, sym_key)
-                        print(f"{Fore.BLUE}Message received from {other_user} at date {date} {Style.RESET_ALL}:")
-                        print(decrypted_message + "\n")
+                if search_user_in_pubkeyfile(user):
+                    print("\n")
+                    # Reading private key
+                    path=os.path.join(user, "id_serp" )
+                    with open(path, 'r') as f:
+                        lignes = f.readlines()
+                        if len(lignes) >= 2:
+                            n = lignes[0].strip()
+                            d = lignes[1].strip()
+                    # Reading message file line by line
+                    pathmess = os.path.join(user, "messages" )
+                    with open(pathmess, 'r') as f: 
+                        linesmess = f.readlines()
+                    if len(linesmess) > 0: 
+                        for ligne in linesmess:
+                            champs = ligne.strip().split(',')
+                            encrypted_sym_key = champs[0] 
+                            encrypted_message = champs[1]
+                            date=champs[2]
+                            other_user=champs[3]
+                            int_sym_key=decrypt_rsa(int(encrypted_sym_key), int(n), int(d) )
+                            bin_sym_key=bin(int_sym_key)
+                            sym_key=bin_sym_key.replace("0b", "")
+                            decrypted_message = decrypt(encrypted_message, sym_key)
+                            print(f"{Fore.BLUE}Message received from {other_user} at date {date} {Style.RESET_ALL}:")
+                            print(decrypted_message + "\n")
+                    else: 
+                        print("You dont have any message :(")
                 else: 
-                    print("You dont have any message :(")
+                    print(f"\n{Fore.RED}You dont have keys, you cant send or receive message{Style.RESET_ALL}")
             case '8':
                 delete = input("Do you really want to delete all messages, you wont be able to retreive them after : y/N\n").lower()
                 if delete == "y":
@@ -471,6 +481,7 @@ def main():
             case '9': 
                 user = verify_user()
                 print(f"User: {Fore.BLUE}{user}{Style.RESET_ALL}")
+                certif = False
             case '10': 
                 menu(user)
             case '0' | 'quit' | 'quitter' | 'q' | 'exit':
